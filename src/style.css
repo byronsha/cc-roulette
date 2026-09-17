@@ -30,8 +30,16 @@ html, body {
    than the race screen's own background (a warmer maroon), which reads as a
    stray box. Matching them exactly while the race screen is up makes any gap
    invisible instead of trying to guarantee there's never a gap at all. */
+/* A faint graph-paper grid, layered on the same gradient as before - pushes
+   the scene toward "page from a biology textbook" rather than just "dark
+   arcade screen", without changing the mood/palette the mostly-dark
+   background sets. Kept subtle (3.5% opacity) so it reads as paper
+   texture, not a distraction competing with the racers. */
 body.race-bg {
-  background: linear-gradient(180deg, #2a1420 0%, #3a1526 100%);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 214, 230, 0.035) 0px, rgba(255, 214, 230, 0.035) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, rgba(255, 214, 230, 0.035) 0px, rgba(255, 214, 230, 0.035) 1px, transparent 1px, transparent 28px),
+    linear-gradient(180deg, #2a1420 0%, #3a1526 100%);
 }
 
 /* The race must fit in exactly one screen with no scrolling at all - `dvh`
@@ -88,11 +96,25 @@ html.scroll-locked, body.scroll-locked {
    scrollbar. */
 #screen-race.screen {
   width: 100%;
-  max-width: none;
+  /* Caps the track at a phone-like aspect ratio no matter how wide the
+     actual browser window is, the same way #app already caps the setup/
+     result screens (max-width:420px, see .screen above). The track's whole
+     curve (trackGeometry.ts) is built assuming a tall, narrow container - a
+     plain wide desktop window, not resized to phone-like proportions,
+     inverts that and visibly distorts the curve. Confirmed directly: at
+     2000x1140 without this cap, #track ends up wider than tall and the
+     hook's top renders as a flat edge instead of round. */
+  max-width: 480px;
+  margin: 0 auto;
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #2a1420 0%, #3a1526 100%);
+  /* Matches body.race-bg's background exactly (grid included) - see that
+     rule's comment for why. */
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 214, 230, 0.035) 0px, rgba(255, 214, 230, 0.035) 1px, transparent 1px, transparent 28px),
+    repeating-linear-gradient(90deg, rgba(255, 214, 230, 0.035) 0px, rgba(255, 214, 230, 0.035) 1px, transparent 1px, transparent 28px),
+    linear-gradient(180deg, #2a1420 0%, #3a1526 100%);
 }
 /* #screen-race.screen's `display: flex` outranks the plain `.screen.hidden`
    rule below (ID + class beats class + class), so without this override the
@@ -112,7 +134,7 @@ h1 {
   letter-spacing: -0.02em;
 }
 
-.app-title.small { font-size: 1.4rem; }
+.app-title.small { font-size: 1.1rem; }
 
 .subtitle {
   color: var(--text-dim);
@@ -226,17 +248,17 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 10px;
+  padding: 8px 14px 6px;
   flex-shrink: 0;
 }
 
 .mute-btn {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: var(--card);
-  font-size: 1.1rem;
+  font-size: 0.95rem;
 }
 
 /* --- race track: fills all remaining space edge-to-edge, no card frame --- */
@@ -254,15 +276,21 @@ h1 {
   margin-bottom: 8px;
 }
 
-/* `inset: 0` against its positioned ancestor (.track-frame), not a
-   percentage height/width - this is the same class of bug as everywhere
-   else in this file: a percentage here would need .track-frame's height to
-   be "definite" per spec, which broke once an ancestor further up relied on
-   min-height instead of an explicit height, silently collapsing this to 0
-   and hiding the entire track. inset sidesteps that requirement entirely. */
+/* Not `inset: 0`: the tube's drawn shape - its OUTER edge, not just its
+   centerline, since the tube has real width - pokes a few px past the top
+   of its own viewBox at the tightest part of the hook, where a wide tube
+   rounds a tight curve, and would otherwise get clipped flush against
+   .track-frame's true edge with zero breathing room (confirmed by directly
+   measuring the drawn tube's on-screen bounding box against the frame's).
+   An `inset: 0` child fills its positioned ancestor's FULL border box,
+   completely ignoring that ancestor's own padding (confirmed by testing it
+   directly) - so an explicit inset here is the only way to actually inset
+   the tube's drawn content. More clearance at the top specifically, since
+   the hook's wide curl lives up there and needs more room than the
+   narrower, straighter isthmus near the bottom. */
 .track {
   position: absolute;
-  inset: 0;
+  inset: 22px 8px 14px 8px;
 }
 
 /* --- shown once the lineup is on the start line, before the countdown --- */
@@ -300,21 +328,35 @@ h1 {
   height: 100%;
 }
 
-.tube-border {
+/* Both the tube and its outline are closed, variable-width FILLED shapes
+   built in JS (buildTubePolygonD in main.ts), not fixed-width strokes on a
+   centerline - that's the only way the tube's width can actually vary
+   along its length (narrow isthmus, wide ampulla). */
+.tube-outline {
+  fill: #7a2249;
+  stroke: none;
+}
+
+.tube-fill {
+  fill: url(#tubeFillGradient);
+  stroke: none;
+}
+
+/* Faint internal cross-lines standing in for the folded lining (rugae) a
+   real fallopian tube diagram shows in cross-section - texture, not
+   structure, so kept subtle. */
+.tube-folds {
   fill: none;
-  stroke: rgba(255, 214, 230, 0.55);
-  stroke-width: 76;
+  stroke: rgba(255, 214, 230, 0.3);
+  stroke-width: 1.5;
   stroke-linecap: round;
-  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
-.tube-surface {
-  fill: none;
-  stroke: #d94f85;
-  stroke-width: 62;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.fimbriae {
+  fill: url(#fimbriaGradient);
+  stroke: #b8305f;
+  stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 

@@ -87,14 +87,19 @@ test.describe("race screen layout", () => {
       expect(overflow.html).toBe("hidden");
       expect(overflow.body).toBe("hidden");
 
-      // Regression guard for a bug that shipped inside this same fix: #track
-      // sized itself with `height: 100%` against .track-frame, which silently
-      // resolved to 0 once an ancestor further up switched from an explicit
-      // height to min-height - the outer layout above still measured
-      // "correct" (no gap/overlap) while the entire tube/egg/racers were
-      // invisible. Checking the outer boxes alone isn't enough; the inner
-      // content box has to actually have size too.
-      expect(rects.track.height).toBeCloseTo(rects.trackFrame.height, 0);
+      // Regression guard for a bug that shipped inside an earlier version of
+      // this fix: #track sized itself with `height: 100%` against
+      // .track-frame, which silently resolved to 0 once an ancestor further
+      // up switched from an explicit height to min-height - the outer
+      // layout above still measured "correct" (no gap/overlap) while the
+      // entire tube/egg/racers were invisible. #track is now intentionally
+      // smaller than .track-frame, via an explicit inset (see style.css -
+      // keeps the tube's drawn shape, which has real width, off the frame's
+      // edges instead of getting clipped flush against them), so this
+      // checks it shrank by roughly that inset, not to 0.
+      const TRACK_INSET_VERTICAL = 36; // 22px top + 14px bottom, from style.css
+      expect(rects.track.height).toBeGreaterThan(rects.trackFrame.height * 0.5);
+      expect(rects.track.height).toBeCloseTo(rects.trackFrame.height - TRACK_INSET_VERTICAL, 0);
 
       // getBoundingClientRect (not getBBox, which is viewBox-space geometry
       // and wouldn't reflect a CSS sizing collapse at all) on the actual SVG
@@ -128,6 +133,57 @@ test.describe("race screen layout", () => {
 
     const overflow = await page.evaluate(() => getComputedStyle(document.querySelector(".track-frame")!).overflow);
     expect(overflow).toBe("hidden");
+  });
+
+  test("stays phone-shaped and undistorted on a wide desktop window", async ({ page }) => {
+    // On a plain desktop browser window (not resized to phone-like
+    // proportions), #track can end up WIDER than it is tall. The whole
+    // curve (trackGeometry.ts) is built assuming the opposite - tall and
+    // narrow - and visibly distorts there: a flat edge where the hook
+    // should be smoothly round. #screen-race.screen caps its width like
+    // the rest of the app already does for setup/result (see style.css) -
+    // this locks in that #track stays taller than wide no matter how wide
+    // the window gets.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto("/");
+    await page.click("#continue-btn");
+
+    const track = await page.evaluate(() => {
+      const r = document.querySelector("#track")!.getBoundingClientRect();
+      return { width: r.width, height: r.height };
+    });
+    expect(track.height).toBeGreaterThan(track.width);
+
+    const d = await page.evaluate(
+      () => document.querySelector(".tube-outline")!.getAttribute("d")!
+    );
+    expect(/NaN|Infinity/.test(d)).toBe(false);
+  });
+
+  test("the whole tube shape stays inside the viewBox (no edge clipped off-screen)", async ({
+    page,
+  }) => {
+    // Real bug: rotating the track clockwise (trackGeometry.ts, so the
+    // start line sits bottom-left instead of bottom-center) pushed the
+    // tube's right edge - its outer boundary, not just its centerline,
+    // since the tube has real width - past x=100, off the viewBox
+    // entirely, silently clipped by the SVG's own default overflow
+    // behavior. Guards the outline's viewBox-space bounding box (getBBox,
+    // not getBoundingClientRect - this needs the SVG's own coordinate
+    // space, not screen pixels) directly against the 0-100 viewBox on
+    // every edge, with a little margin.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/");
+    await page.click("#continue-btn");
+
+    const bbox = await page.evaluate(() => {
+      const b = document.querySelector(".tube-outline")!.getBBox();
+      return { left: b.x, top: b.y, right: b.x + b.width, bottom: b.y + b.height };
+    });
+    expect(bbox.left).toBeGreaterThan(0);
+    expect(bbox.top).toBeGreaterThan(0);
+    expect(bbox.right).toBeLessThan(100);
+    expect(bbox.bottom).toBeLessThan(100);
   });
 
   test("race lineup matches baseline", async ({ page }) => {

@@ -3,7 +3,17 @@ import raceMusicUrl from "./assets/race-music.mp3";
 import beepUrl from "./assets/sfx-beep.mp3";
 import gunshotUrl from "./assets/sfx-gunshot.mp3";
 import buzzerUrl from "./assets/sfx-buzzer.mp3";
-import { tubeAngle, tubeCenter, trackPoint, travelAngle } from "./trackGeometry";
+import {
+  tubeAngle,
+  tubeCenter,
+  trackPoint,
+  travelAngle,
+  tubeWidthPx,
+  perpendicularOffsetPercent,
+  TUBE_SOLID_T_MAX,
+  EGG_X,
+  EGG_Y,
+} from "./trackGeometry";
 import { stepRace, type EngineConstants } from "./raceEngine";
 
 type ScreenName = "setup" | "race" | "result";
@@ -132,12 +142,13 @@ countSlider.addEventListener("input", () => {
 // the countdown/music yet - that only happens once the player clicks the
 // "Start Race" button on the race screen itself, via beginRaceBtn below.
 function prepareRace(): void {
-  buildRace(playerCount);
   showScreen("race");
-  // #track has real layout only once its screen is visible (not display:none),
-  // so lane offsets - which need real pixel dimensions - are measured here.
+  // #track has real layout only once its screen is visible (not
+  // display:none), so this has to run before buildRace() - both the tube's
+  // own variable-width shape and racers' lane offsets need real pixel
+  // dimensions, not just viewBox %.
   measureTrack();
-  positionRacers();
+  buildRace(playerCount);
   beginRaceBtn.classList.remove("hidden");
 }
 
@@ -289,12 +300,14 @@ function buildRace(n: number): void {
   positionRacers();
 }
 
-// Converts a series of points into a smooth SVG path (Catmull-Rom through every
-// point, expressed as cubic beziers) instead of a straight-segment polyline, so
-// the tube has no faceted "elbows" at the bends - a continuous, organic curve.
-function smoothPathD(points: { x: number; y: number }[]): string {
+// Catmull-Rom-through-every-point cubic bezier commands for a series of
+// points, WITHOUT the leading M - so two of these (one per boundary edge of
+// the tube) can be concatenated into one closed path instead of drawing two
+// separate strokes. Gives every curve (either tube edge) the same
+// "no faceted elbows" smoothness a plain centerline stroke used to have.
+function smoothPathSegment(points: { x: number; y: number }[]): string {
   if (points.length < 2) return "";
-  let d = `M${points[0].x},${points[0].y}`;
+  let d = "";
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[Math.max(0, i - 1)];
     const p1 = points[i];
@@ -309,15 +322,114 @@ function smoothPathD(points: { x: number; y: number }[]): string {
   return d;
 }
 
-function drawTrack(): void {
-  const points: { x: number; y: number }[] = [];
-  for (let step = 0; step <= 80; step++) {
-    points.push(tubeCenter(step / 80));
+const TRACK_STEPS = 120;
+
+// Builds a closed, filled tube shape (both edges offset from the centerline
+// by widthFn(t)/2, in real px) instead of a single stroked centerline - the
+// only way to get a tube whose width actually varies along its length
+// (narrow isthmus, wide ampulla), since a plain SVG stroke-width is
+// constant for the whole path. Stops at TUBE_SOLID_T_MAX, not t=1: the
+// fimbriae/egg (drawn separately) cover the small remaining approach, which
+// by then is a tight curl a solid tube shape would otherwise clip against.
+function buildTubePolygonD(widthFn: (t: number) => number): string {
+  const left: { x: number; y: number }[] = [];
+  const right: { x: number; y: number }[] = [];
+  for (let step = 0; step <= TRACK_STEPS; step++) {
+    const t = (step / TRACK_STEPS) * TUBE_SOLID_T_MAX;
+    const half = widthFn(t) / 2;
+    const center = tubeCenter(t);
+    const off = perpendicularOffsetPercent(t, half, trackW, trackH);
+    left.push({ x: center.x - off.x, y: center.y - off.y });
+    right.push({ x: center.x + off.x, y: center.y + off.y });
   }
-  const d = smoothPathD(points);
+  const rightRev = right.slice().reverse();
+  return (
+    `M${left[0].x},${left[0].y}` +
+    smoothPathSegment(left) +
+    ` L${rightRev[0].x},${rightRev[0].y}` +
+    smoothPathSegment(rightRev) +
+    " Z"
+  );
+}
+
+// Short cross-lines suggesting the folded internal lining (rugae) real
+// fallopian tube diagrams show in cross-section - drawn at evenly spaced
+// points along the tube, each spanning a little short of the full local
+// width so they read as texture inside the walls, not extra boundary lines.
+function buildFoldLines(): string {
+  const count = 16;
+  let d = "";
+  for (let k = 1; k < count; k++) {
+    const t = (k / count) * TUBE_SOLID_T_MAX;
+    const half = (tubeWidthPx(t) / 2) * 0.68;
+    const off = perpendicularOffsetPercent(t, half, trackW, trackH);
+    const center = tubeCenter(t);
+    const a = { x: center.x - off.x, y: center.y - off.y };
+    const b = { x: center.x + off.x, y: center.y + off.y };
+    d += `M${a.x},${a.y} L${b.x},${b.y} `;
+  }
+  return d;
+}
+
+// Fimbriae: the finger-like fringe real fallopian tubes have at the end
+// nearest the ovary, drawn as small petal shapes fanned out around the egg
+// - sells the "opening flares back out around the egg" read that the
+// tube's own solid shape (tapering to TERMINAL_WIDTH_PX, not a point)
+// doesn't fully carry on its own. Egg is a 52px-diameter circle (26px
+// radius, see .egg in style.css) drawn on top of this SVG - fimbriae have
+// to reach past that radius or they're just invisible underneath it.
+function buildFimbriae(): string {
+  const count = 10;
+  const tipDistPx = 58;
+  const baseDistPx = 22;
+  const baseSpreadPx = 9;
+  let d = "";
+  for (let k = 0; k < count; k++) {
+    const angle = (k / count) * Math.PI * 2 + (k % 2 === 0 ? 0 : 0.18);
+    const perpAngle = angle + Math.PI / 2;
+    const tip = {
+      x: EGG_X + ((Math.cos(angle) * tipDistPx) / trackW) * 100,
+      y: EGG_Y + ((Math.sin(angle) * tipDistPx) / trackH) * 100,
+    };
+    const baseCenter = {
+      x: EGG_X + ((Math.cos(angle) * baseDistPx) / trackW) * 100,
+      y: EGG_Y + ((Math.sin(angle) * baseDistPx) / trackH) * 100,
+    };
+    const baseA = {
+      x: baseCenter.x + ((Math.cos(perpAngle) * baseSpreadPx) / trackW) * 100,
+      y: baseCenter.y + ((Math.sin(perpAngle) * baseSpreadPx) / trackH) * 100,
+    };
+    const baseB = {
+      x: baseCenter.x - ((Math.cos(perpAngle) * baseSpreadPx) / trackW) * 100,
+      y: baseCenter.y - ((Math.sin(perpAngle) * baseSpreadPx) / trackH) * 100,
+    };
+    d += `M${baseA.x},${baseA.y} Q${tip.x},${tip.y} ${baseB.x},${baseB.y} Q${baseCenter.x},${baseCenter.y} ${baseA.x},${baseA.y} Z `;
+  }
+  return d;
+}
+
+function drawTrack(): void {
+  const outlineD = buildTubePolygonD((t) => tubeWidthPx(t) + 14);
+  const fillD = buildTubePolygonD(tubeWidthPx);
+  const foldsD = buildFoldLines();
+  const fimbriaeD = buildFimbriae();
+
   trackGuidesEl.innerHTML = `
-    <path d="${d}" class="tube-border"/>
-    <path d="${d}" class="tube-surface"/>
+    <defs>
+      <linearGradient id="tubeFillGradient" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#c73d73"/>
+        <stop offset="45%" stop-color="#e8659a"/>
+        <stop offset="100%" stop-color="#b8336299"/>
+      </linearGradient>
+      <radialGradient id="fimbriaGradient" cx="50%" cy="35%" r="70%">
+        <stop offset="0%" stop-color="#f7a8c4"/>
+        <stop offset="100%" stop-color="#d9548a"/>
+      </radialGradient>
+    </defs>
+    <path d="${outlineD}" class="tube-outline"/>
+    <path d="${fillD}" class="tube-fill"/>
+    <path d="${fimbriaeD}" class="fimbriae"/>
+    <path d="${foldsD}" class="tube-folds"/>
   `;
 
   const eggPoint = tubeCenter(1);
@@ -346,6 +458,11 @@ function measureTrack(): void {
 window.addEventListener("resize", () => {
   if (racers.length === 0) return;
   measureTrack();
+  // The tube's shape is built from real-pixel widths (see buildTubePolygonD),
+  // so it has to be redrawn on resize too, not just the racers repositioned -
+  // otherwise it stays sized for whatever aspect ratio was current when the
+  // race screen first opened.
+  drawTrack();
   positionRacers();
 });
 
