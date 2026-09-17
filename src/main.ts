@@ -220,6 +220,7 @@ const ENGINE_CONSTANTS: EngineConstants = {
 
 const trackEl = el<HTMLDivElement>("track");
 const racersEl = el<HTMLDivElement>("racers");
+const legendEl = el<HTMLDivElement>("legend");
 const trackGuidesEl = el<SVGSVGElement>("track-guides");
 const eggEl = el<HTMLDivElement>("egg");
 const startLineEl = el<HTMLDivElement>("start-line");
@@ -234,9 +235,17 @@ const changePlayersBtn = el<HTMLButtonElement>("change-players-btn");
 
 let racers: Racer[] = [];
 let raceLayout: number[] = []; // palette/accessory index per racer, current race
+let legendRows: HTMLElement[] = []; // racer index -> its row in #legend
+let finishOrder: number[] = []; // racer indices, in the order they finished
 let rafId = 0;
 let lastTs = 0;
 let finishedCount = 0;
+let lastLegendUpdateTs = 0;
+// Re-sorting every animation frame would make the legend jitter constantly
+// (progress deltas between racers can flip rank many times a second) -
+// throttling to a few times a second still reads as "live" while keeping
+// the standings actually legible.
+const LEGEND_UPDATE_INTERVAL_MS = 150;
 
 const music = new Audio(raceMusicUrl);
 music.loop = true;
@@ -328,9 +337,38 @@ function buildRace(n: number): void {
     };
   });
   finishedCount = 0;
+  finishOrder = [];
+
+  legendEl.innerHTML = raceLayout
+    .map((styleIndex, i) => {
+      const { color, dark } = PALETTE[styleIndex];
+      return `<div class="legend-row" id="legend-row-${i}" style="order:${i + 1}">
+        <span class="legend-chip" style="background:${color};border-color:${dark}">${i + 1}</span>
+      </div>`;
+    })
+    .join("");
+  legendRows = raceLayout.map((_, i) => el<HTMLElement>(`legend-row-${i}`));
 
   drawTrack();
   positionRacers();
+}
+
+// Ranks racers by current standing - already-finished racers first, in the
+// order they actually crossed the line (their progress all reads 100, so
+// sorting by progress alone can't tell them apart or keep a finisher from
+// visually swapping with another finisher), then everyone still racing,
+// sorted by progress descending. Only touches each row's `order` (a fixed
+// row per racer, see buildRace) - never reshuffles the DOM itself.
+function updateLegend(): void {
+  const finishedSet = new Set(finishOrder);
+  const stillRacing = racers
+    .filter((r) => !finishedSet.has(r.index))
+    .sort((a, b) => b.progress - a.progress)
+    .map((r) => r.index);
+  const ranking = [...finishOrder, ...stillRacing];
+  ranking.forEach((racerIndex, i) => {
+    legendRows[racerIndex].style.order = String(i + 1);
+  });
 }
 
 // Catmull-Rom-through-every-point cubic bezier commands for a series of
@@ -652,6 +690,7 @@ function startRace(): void {
   });
 
   lastTs = now;
+  lastLegendUpdateTs = 0;
   rafId = requestAnimationFrame(tick);
 }
 
@@ -663,6 +702,7 @@ function tick(ts: number): void {
   finishedCount = result.finishedCount;
   for (const i of result.finishedIndices) {
     racers[i].el.classList.add("finished");
+    finishOrder.push(i);
   }
 
   // Visual feedback for the cilia slowdown itself (see stepRace) - without
@@ -674,7 +714,13 @@ function tick(ts: number): void {
 
   positionRacers();
 
+  if (ts - lastLegendUpdateTs >= LEGEND_UPDATE_INTERVAL_MS) {
+    lastLegendUpdateTs = ts;
+    updateLegend();
+  }
+
   if (result.raceEnded) {
+    updateLegend();
     endRace();
     return;
   }

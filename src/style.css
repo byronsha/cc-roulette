@@ -321,6 +321,45 @@ h1 {
   inset: 22px 8px 14px 8px;
 }
 
+/* --- live standings, ranked by current progress (see updateLegend in
+   main.ts) --- */
+/* A sibling of #track inside .track-frame (not inside #track itself) so it
+   overlays the track without being clipped to the tube's own inset - fixed
+   to the frame's top-right corner, where the tube's curve leaves empty
+   background space at every viewport size tested. Each row is a fixed
+   racer (same color/number as its sperm-number badge on the track), and
+   only its `order` changes as standings shift - the vertical position in
+   this list IS the "relative to everyone else" read, so no separate rank
+   number is drawn. z-index sits above racers (3) but below the
+   begin-race-btn/countdown overlays (6) so it never blocks a control. */
+.legend {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(20, 10, 15, 0.55);
+  pointer-events: none;
+}
+.legend-row {
+  display: flex;
+}
+.legend-chip {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+}
+
 /* --- shown once the lineup is on the start line, before the countdown --- */
 .begin-race-btn {
   position: absolute;
