@@ -475,13 +475,28 @@ function buildCiliaTufts(): string {
   const rows = 2;
   const hairsPerTuft = 3;
   const visualHalfWidthProgress = 3;
+  const zoneCount = CILIA_ZONES.length;
   let out = "";
-  for (const zone of CILIA_ZONES) {
+  for (let zoneIndex = 0; zoneIndex < zoneCount; zoneIndex++) {
+    const zone = CILIA_ZONES[zoneIndex];
+    // Taper density toward the very first/last zones - cilia crowding the
+    // starting line or the egg itself reads as clutter around the two
+    // things a player is actually looking at, not part of the tube's
+    // texture. Full density resumes by the third zone in from either end.
+    const edgeDist = Math.min(zoneIndex, zoneCount - 1 - zoneIndex);
+    const maxTufts = edgeDist === 0 ? 1 : edgeDist === 1 ? 2 : cols * rows;
+
     const centerProgress = (zone.startProgress + zone.endProgress) / 2;
     const t0 = (centerProgress - visualHalfWidthProgress) / 100;
     const t1 = (centerProgress + visualHalfWidthProgress) / 100;
+    let tuftIndex = 0;
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
+        if (tuftIndex >= maxTufts) {
+          tuftIndex++;
+          continue;
+        }
+        tuftIndex++;
         const seedBase = zone.startProgress * 91.7 + row * 17.3 + col * 33.1;
         const jitterT = (pseudoRandom01(seedBase) - 0.5) / cols;
         const jitterW = (pseudoRandom01(seedBase * 1.618 + 4.21) - 0.5) / rows;
