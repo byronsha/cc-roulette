@@ -401,11 +401,10 @@ h1 {
   0%, 100% { opacity: 0.75; }
   50% { opacity: 1; }
 }
-.cilia-dot-halo {
-  fill: rgba(173, 230, 255, 0.45);
-}
-.cilia-dot-core {
-  fill: rgba(230, 250, 255, 0.9);
+.cilia-dot {
+  fill: rgba(210, 245, 255, 0.8);
+  stroke: rgba(173, 230, 255, 0.55);
+  stroke-width: 0.25;
 }
 
 .start-line {

@@ -449,32 +449,42 @@ function pseudoRandom01(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Cilia (see CILIA_ZONES/stepRace), drawn as small dots scattered across
-// the MIDDLE of the track - as if looking straight down the length of each
-// cilium from directly above (a true top-down/frontal view), rather than a
-// side profile of hairs lining the walls. Each dot is two circles (a soft
-// outer halo + a brighter core) for a little dimensionality, kept within
-// the inner ~70% of the tube's local width so none sit flush against a
-// wall.
+// Cilia (see CILIA_ZONES/stepRace), drawn as small hair-flecks scattered
+// across the MIDDLE of the track - as if looking straight down the length
+// of each cilium from directly above (a true top-down/frontal view),
+// rather than a side profile of hairs lining the walls. Two things this
+// deliberately avoids: (1) placing each one fully at random within its
+// zone, which clumps some areas and leaves others empty at these small
+// counts - a jittered grid (a fixed row/column cell, nudged by a small
+// random offset within that cell) instead reads as evenly spread while
+// still avoiding a visibly mechanical grid; (2) a round, two-tone
+// halo+core dot, which read as tiny glowing eggs - a bad look one screen
+// away from the actual egg. A short, thin ellipse at a random rotation
+// reads as a hair-tip caught off-axis instead.
 function buildCiliaDots(): string {
-  const dotsPerZone = 6;
+  const cols = 3;
+  const rows = 2;
   let out = "";
   for (const zone of CILIA_ZONES) {
     const t0 = zone.startProgress / 100;
     const t1 = zone.endProgress / 100;
-    for (let i = 0; i < dotsPerZone; i++) {
-      const seedBase = zone.startProgress * 91.7 + i * 12.9898;
-      const fracT = pseudoRandom01(seedBase);
-      const fracW = pseudoRandom01(seedBase * 1.618 + 4.21);
-      const fracR = pseudoRandom01(seedBase * 2.71 + 8.9);
-      const t = t0 + fracT * (t1 - t0);
-      const half = tubeWidthPx(t) / 2;
-      const lateralPx = (fracW * 2 - 1) * half * 0.7;
-      const center = tubeCenter(t);
-      const off = perpendicularOffsetPercent(t, lateralPx, trackW, trackH);
-      const p = { x: center.x + off.x, y: center.y + off.y };
-      const r = 0.9 + fracR * 0.7;
-      out += `<circle cx="${p.x}" cy="${p.y}" r="${r}" class="cilia-dot-halo"/><circle cx="${p.x}" cy="${p.y}" r="${r * 0.42}" class="cilia-dot-core"/>`;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const seedBase = zone.startProgress * 91.7 + row * 17.3 + col * 33.1;
+        const jitterT = (pseudoRandom01(seedBase) - 0.5) / cols;
+        const jitterW = (pseudoRandom01(seedBase * 1.618 + 4.21) - 0.5) / rows;
+        const fracT = Math.min(1, Math.max(0, (col + 0.5) / cols + jitterT));
+        const fracW = Math.min(1, Math.max(0, (row + 0.5) / rows + jitterW));
+        const t = t0 + fracT * (t1 - t0);
+        const half = tubeWidthPx(t) / 2;
+        const lateralPx = (fracW * 2 - 1) * half * 0.65;
+        const center = tubeCenter(t);
+        const off = perpendicularOffsetPercent(t, lateralPx, trackW, trackH);
+        const p = { x: center.x + off.x, y: center.y + off.y };
+        const angleDeg = pseudoRandom01(seedBase * 2.71 + 8.9) * 360;
+        const length = 1.1 + pseudoRandom01(seedBase * 3.4 + 1.3) * 0.7;
+        out += `<ellipse cx="${p.x}" cy="${p.y}" rx="${length}" ry="${length * 0.3}" transform="rotate(${angleDeg} ${p.x} ${p.y})" class="cilia-dot"/>`;
+      }
     }
   }
   return out;
