@@ -389,22 +389,23 @@ h1 {
 }
 
 /* Cilia hazard zones (see CILIA_ZONES/stepRace in main.ts/raceEngine.ts),
-   drawn as small dots scattered across the middle of the track (top-down
-   view of each cilium's tip) rather than hairs lining the walls. Icy blue-
-   white, distinct from the tube's own warm pink palette, so a cluster
-   reads as "different from the surface" at a glance. Pulses gently to draw
-   the eye toward an oncoming one before a racer reaches it. */
-.cilia-dots {
-  animation: cilia-dots-pulse 2.2s ease-in-out infinite;
+   drawn as small combed tufts scattered across the middle of the track
+   (top-down view of a ciliated patch) rather than hairs lining the walls.
+   Icy blue-white, distinct from the tube's own warm pink palette, so a
+   patch reads as "different from the surface" at a glance. Pulses gently
+   to draw the eye toward an oncoming one before a racer reaches it. */
+.cilia-tufts {
+  animation: cilia-tufts-pulse 2.2s ease-in-out infinite;
 }
-@keyframes cilia-dots-pulse {
-  0%, 100% { opacity: 0.75; }
+@keyframes cilia-tufts-pulse {
+  0%, 100% { opacity: 0.8; }
   50% { opacity: 1; }
 }
-.cilia-dot {
-  fill: rgba(210, 245, 255, 0.8);
-  stroke: rgba(173, 230, 255, 0.55);
-  stroke-width: 0.25;
+.cilia-hair {
+  fill: none;
+  stroke: rgba(214, 246, 255, 0.9);
+  stroke-width: 0.35;
+  stroke-linecap: round;
 }
 
 .start-line {

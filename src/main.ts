@@ -187,7 +187,7 @@ const RUBBER_BAND_STRENGTH = -0.2;
 // handful of wide clustered patches - real fallopian tube cilia line most
 // of the tube fairly continuously, not just a few isolated spots. Fixed,
 // not randomized per race - drawTrack() renders visible cilia dots at each
-// one (see buildCiliaDots), so players can see a hazard coming rather than
+// one (see buildCiliaTufts), so players can see a hazard coming rather than
 // being blindsided by an invisible one. The RANDOMNESS is entirely in
 // whether a given racer is slowed when it passes through (see
 // ciliaTriggerChance) - the zones' positions are part of the track, not
@@ -449,21 +449,24 @@ function pseudoRandom01(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Cilia (see CILIA_ZONES/stepRace), drawn as small hair-flecks scattered
-// across the MIDDLE of the track - as if looking straight down the length
-// of each cilium from directly above (a true top-down/frontal view),
-// rather than a side profile of hairs lining the walls. Two things this
-// deliberately avoids: (1) placing each one fully at random within its
-// zone, which clumps some areas and leaves others empty at these small
-// counts - a jittered grid (a fixed row/column cell, nudged by a small
-// random offset within that cell) instead reads as evenly spread while
-// still avoiding a visibly mechanical grid; (2) a round, two-tone
-// halo+core dot, which read as tiny glowing eggs - a bad look one screen
-// away from the actual egg. A short, thin ellipse at a random rotation
-// reads as a hair-tip caught off-axis instead.
-function buildCiliaDots(): string {
+// Cilia (see CILIA_ZONES/stepRace), drawn as small combed tufts scattered
+// across the MIDDLE of the track - as if looking straight down at a
+// ciliated patch of epithelium from directly above (a true top-down view),
+// rather than a side profile of hairs lining the walls. Each tuft is a
+// few thin, gently curved strokes fanned from one root point - not a
+// single fat filled shape - because a lone solid ellipse reads as a grain
+// of rice (or, worse, a tiny egg) no matter how it's rotated; only several
+// fine strokes together read as "hair". Every tuft in a zone is combed the
+// same way, roughly opposite the tube's local direction of travel (real
+// fallopian cilia beat toward the uterus, against the sperm), with just
+// enough per-tuft jitter that the patch still looks organic rather than
+// printed. Placement itself is a jittered grid (a fixed row/column cell,
+// nudged by a small random offset within that cell) so coverage stays
+// even without looking like a mechanical grid.
+function buildCiliaTufts(): string {
   const cols = 3;
   const rows = 2;
+  const hairsPerTuft = 3;
   let out = "";
   for (const zone of CILIA_ZONES) {
     const t0 = zone.startProgress / 100;
@@ -477,13 +480,25 @@ function buildCiliaDots(): string {
         const fracW = Math.min(1, Math.max(0, (row + 0.5) / rows + jitterW));
         const t = t0 + fracT * (t1 - t0);
         const half = tubeWidthPx(t) / 2;
-        const lateralPx = (fracW * 2 - 1) * half * 0.65;
+        const lateralPx = (fracW * 2 - 1) * half * 0.6;
         const center = tubeCenter(t);
         const off = perpendicularOffsetPercent(t, lateralPx, trackW, trackH);
         const p = { x: center.x + off.x, y: center.y + off.y };
-        const angleDeg = pseudoRandom01(seedBase * 2.71 + 8.9) * 360;
-        const length = 1.1 + pseudoRandom01(seedBase * 3.4 + 1.3) * 0.7;
-        out += `<ellipse cx="${p.x}" cy="${p.y}" rx="${length}" ry="${length * 0.3}" transform="rotate(${angleDeg} ${p.x} ${p.y})" class="cilia-dot"/>`;
+
+        const beatAngle = tubeAngle(t) + 180;
+        const tuftJitter = (pseudoRandom01(seedBase * 2.71 + 8.9) - 0.5) * 26;
+        const baseAngle = beatAngle + tuftJitter;
+
+        let hairs = "";
+        for (let h = 0; h < hairsPerTuft; h++) {
+          const hairSeed = seedBase * 5.2 + h * 7.77;
+          const fan = (h - (hairsPerTuft - 1) / 2) * 11 + (pseudoRandom01(hairSeed) - 0.5) * 8;
+          const angle = baseAngle + fan;
+          const length = 1.5 + pseudoRandom01(hairSeed * 1.9 + 2.2) * 1.2;
+          const bend = (pseudoRandom01(hairSeed * 3.3 + 5.5) - 0.5) * 0.9;
+          hairs += `<path d="M 0 0 Q ${bend.toFixed(2)} ${(-length * 0.55).toFixed(2)} ${(bend * 1.5).toFixed(2)} ${(-length).toFixed(2)}" transform="rotate(${angle.toFixed(1)})" class="cilia-hair"/>`;
+        }
+        out += `<g transform="translate(${p.x.toFixed(2)} ${p.y.toFixed(2)})">${hairs}</g>`;
       }
     }
   }
@@ -495,7 +510,7 @@ function drawTrack(): void {
   const fillD = buildTubePolygonD(tubeWidthPx);
   const foldsD = buildFoldLines();
   const fimbriaeD = buildFimbriae();
-  const ciliaDotsD = buildCiliaDots();
+  const ciliaTuftsD = buildCiliaTufts();
 
   trackGuidesEl.innerHTML = `
     <defs>
@@ -513,7 +528,7 @@ function drawTrack(): void {
     <path d="${fillD}" class="tube-fill"/>
     <path d="${fimbriaeD}" class="fimbriae"/>
     <path d="${foldsD}" class="tube-folds"/>
-    <g class="cilia-dots">${ciliaDotsD}</g>
+    <g class="cilia-tufts">${ciliaTuftsD}</g>
   `;
 
   const eggPoint = tubeCenter(1);
