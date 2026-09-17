@@ -482,9 +482,9 @@ function buildCiliaTufts(): string {
     // Taper density toward the very first/last zones - cilia crowding the
     // starting line or the egg itself reads as clutter around the two
     // things a player is actually looking at, not part of the tube's
-    // texture. Full density resumes by the third zone in from either end.
+    // texture. Full density resumes by the fourth zone in from either end.
     const edgeDist = Math.min(zoneIndex, zoneCount - 1 - zoneIndex);
-    const maxTufts = edgeDist === 0 ? 1 : edgeDist === 1 ? 2 : cols * rows;
+    const maxTufts = edgeDist === 0 ? 0 : edgeDist === 1 ? 1 : edgeDist === 2 ? 2 : cols * rows;
 
     const centerProgress = (zone.startProgress + zone.endProgress) / 2;
     const t0 = (centerProgress - visualHalfWidthProgress) / 100;
