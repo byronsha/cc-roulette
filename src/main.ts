@@ -463,14 +463,23 @@ function pseudoRandom01(seed: number): number {
 // printed. Placement itself is a jittered grid (a fixed row/column cell,
 // nudged by a small random offset within that cell) so coverage stays
 // even without looking like a mechanical grid.
+//
+// The visual footprint deliberately spans wider than CILIA_ZONES' own
+// (narrow, gameplay-only) start/end - drawing tufts strictly inside that
+// tight band packed them into a dense little clump with visible gaps to
+// the next zone, reading as isolated spots rather than a continuous
+// ciliated stretch. Widening the visual band (while leaving the actual
+// hit-zone width untouched) lets neighboring zones' tufts blend together.
 function buildCiliaTufts(): string {
-  const cols = 3;
+  const cols = 2;
   const rows = 2;
   const hairsPerTuft = 3;
+  const visualHalfWidthProgress = 3;
   let out = "";
   for (const zone of CILIA_ZONES) {
-    const t0 = zone.startProgress / 100;
-    const t1 = zone.endProgress / 100;
+    const centerProgress = (zone.startProgress + zone.endProgress) / 2;
+    const t0 = (centerProgress - visualHalfWidthProgress) / 100;
+    const t1 = (centerProgress + visualHalfWidthProgress) / 100;
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const seedBase = zone.startProgress * 91.7 + row * 17.3 + col * 33.1;
