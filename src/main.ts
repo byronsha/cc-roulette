@@ -10,7 +10,6 @@ import {
   travelAngle,
   tubeWidthPx,
   perpendicularOffsetPercent,
-  tubeTangentPx,
   TUBE_SOLID_T_MAX,
   EGG_X,
   EGG_Y,
@@ -409,75 +408,11 @@ function buildFimbriae(): string {
   return d;
 }
 
-// Cilia along the tube's inner lining - real fallopian tubes are densely
-// ciliated in the wide ampulla/infundibulum (near the egg) specifically,
-// with far fewer toward the isthmus near the uterus, which is why this
-// skips t<0.3 entirely rather than covering the whole tube evenly. Each
-// hair gets a small sideways bow (a quadratic control point nudged along
-// the tube's own tangent direction) instead of being a straight tick mark,
-// so they read as soft cilia rather than a ruled/technical hatching
-// pattern - that's what .tube-folds already covers.
-function buildTubeCilia(): string {
-  const rows = 20;
-  let d = "";
-  for (let k = 1; k < rows; k++) {
-    const t = (k / rows) * TUBE_SOLID_T_MAX;
-    if (t < 0.3) continue;
-    const width = tubeWidthPx(t);
-    const half = width / 2;
-    const hairLenPx = Math.min(9, width * 0.15);
-    const center = tubeCenter(t);
-    const tangent = tubeTangentPx(t, trackW, trackH);
-    const tanLen = Math.hypot(tangent.x, tangent.y) || 1;
-    const wavePx = Math.sin(k * 2.1) * hairLenPx * 0.35;
-    const waveX = ((tangent.x / tanLen) * wavePx / trackW) * 100;
-    const waveY = ((tangent.y / tanLen) * wavePx / trackH) * 100;
-    for (const side of [-1, 1]) {
-      const baseOff = perpendicularOffsetPercent(t, half * 0.88 * side, trackW, trackH);
-      const tipOff = perpendicularOffsetPercent(t, (half * 0.88 - hairLenPx) * side, trackW, trackH);
-      const base = { x: center.x + baseOff.x, y: center.y + baseOff.y };
-      const tip = { x: center.x + tipOff.x, y: center.y + tipOff.y };
-      const ctrl = { x: (base.x + tip.x) / 2 + waveX, y: (base.y + tip.y) / 2 + waveY };
-      d += `M${base.x},${base.y} Q${ctrl.x},${ctrl.y} ${tip.x},${tip.y} `;
-    }
-  }
-  return d;
-}
-
-// The fimbriae are the MOST densely ciliated part of the real thing - it's
-// literally how they sweep the egg in after ovulation - so each petal gets
-// a small fan of fine hairs extending past its own tip, on top of (not
-// instead of) the petal shape itself.
-function buildFimbriaeCilia(): string {
-  const count = 10;
-  const tipDistPx = 58; // matches buildFimbriae's own tipDistPx
-  const hairLenPx = 10;
-  let d = "";
-  for (let k = 0; k < count; k++) {
-    const angle = (k / count) * Math.PI * 2 + (k % 2 === 0 ? 0 : 0.18);
-    const tip = {
-      x: EGG_X + ((Math.cos(angle) * tipDistPx) / trackW) * 100,
-      y: EGG_Y + ((Math.sin(angle) * tipDistPx) / trackH) * 100,
-    };
-    for (const spread of [-0.35, 0, 0.35]) {
-      const a2 = angle + spread;
-      const far = {
-        x: EGG_X + ((Math.cos(a2) * (tipDistPx + hairLenPx)) / trackW) * 100,
-        y: EGG_Y + ((Math.sin(a2) * (tipDistPx + hairLenPx)) / trackH) * 100,
-      };
-      d += `M${tip.x},${tip.y} L${far.x},${far.y} `;
-    }
-  }
-  return d;
-}
-
 function drawTrack(): void {
   const outlineD = buildTubePolygonD((t) => tubeWidthPx(t) + 14);
   const fillD = buildTubePolygonD(tubeWidthPx);
   const foldsD = buildFoldLines();
   const fimbriaeD = buildFimbriae();
-  const ciliaD = buildTubeCilia();
-  const fimbriaeCiliaD = buildFimbriaeCilia();
 
   trackGuidesEl.innerHTML = `
     <defs>
@@ -495,8 +430,6 @@ function drawTrack(): void {
     <path d="${fillD}" class="tube-fill"/>
     <path d="${fimbriaeD}" class="fimbriae"/>
     <path d="${foldsD}" class="tube-folds"/>
-    <path d="${ciliaD}" class="tube-cilia"/>
-    <path d="${fimbriaeCiliaD}" class="fimbriae-cilia"/>
   `;
 
   const eggPoint = tubeCenter(1);

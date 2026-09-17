@@ -381,26 +381,6 @@ h1 {
   vector-effect: non-scaling-stroke;
 }
 
-/* Cilia lining the tube's inner surface - real ones are densest in the
-   ampulla near the egg, which buildTubeCilia (main.ts) reflects by only
-   drawing them there. A finer, softer stroke than .tube-folds so the two
-   read as different textures (folds = structure, cilia = fine hairs). */
-.tube-cilia {
-  fill: none;
-  stroke: rgba(255, 235, 245, 0.55);
-  stroke-width: 1;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.fimbriae-cilia {
-  fill: none;
-  stroke: rgba(255, 235, 245, 0.65);
-  stroke-width: 0.8;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-
 .fimbriae {
   fill: url(#fimbriaGradient);
   stroke: #b8305f;
