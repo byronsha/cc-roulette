@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sperm Race</title>
+
+<!-- iMessage/social link previews read these (og:) tags - iMessage requires
+     an absolute og:image URL, a relative one is silently ignored. -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sperminator.netlify.app">
+<meta property="og:title" content="🏁 Sperm Race">
+<meta property="og:description" content="Every sperm has a dream. Most won't survive it.">
+<meta property="og:image" content="https://sperminator.netlify.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="🏁 Sperm Race">
+<meta name="twitter:description" content="Every sperm has a dream. Most won't survive it.">
+<meta name="twitter:image" content="https://sperminator.netlify.app/og-image.png">
+</head>
+<body>
+  <div id="app">
+
+    <!-- SETUP SCREEN -->
+    <section id="screen-setup" class="screen">
+      <div class="wrap">
+        <h1 class="app-title">🏁 Sperm Race</h1>
+        <p class="subtitle">Every sperm has a dream. Most won't survive it.</p>
+
+        <div class="slider-block">
+          <div class="slider-value">
+            <span id="player-count-display">6</span>
+            <span class="slider-label">racers</span>
+          </div>
+          <input
+            id="player-count-slider"
+            class="slider"
+            type="range"
+            min="2"
+            max="10"
+            step="1"
+            value="6"
+            aria-label="Number of racers"
+          />
+        </div>
+
+        <button id="continue-btn" class="primary-btn">Continue</button>
+        <p class="hint">Each racer gets its own color and hat. Pick one to root for.</p>
+      </div>
+    </section>
+
+    <!-- RESULT SCREEN -->
+    <section id="screen-result" class="screen hidden">
+      <div class="wrap">
+        <div id="result-sperm" class="result-sperm"></div>
+        <h1 id="result-title">Racer <span id="result-number">?</span> didn't make it.</h1>
+        <p class="result-name">Swam its heart out. Died alone. 🪦</p>
+        <button id="again-btn" class="primary-btn">Race Again</button>
+        <button id="change-players-btn" class="secondary-btn">Change Racer Count</button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- RACE SCREEN: a sibling of #app, not a child - it needs to fill the
+       whole page edge-to-edge, ignoring #app's centered/padded/max-width
+       layout, and normal document flow (not position:fixed) is what makes
+       its height robust across every mobile browser's own toolbar/chrome
+       behavior. See the comment on #screen-race.screen in style.css. -->
+  <section id="screen-race" class="screen hidden">
+    <div class="wrap wrap-wide">
+      <div class="race-header">
+        <h1 class="app-title small">🏁 Sperm Race</h1>
+        <button id="mute-btn" type="button" class="mute-btn" aria-label="Mute music">🔊</button>
+      </div>
+
+      <div class="track-frame">
+        <div id="track" class="track">
+          <svg id="track-guides" class="track-guides" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <div id="start-line" class="start-line"></div>
+          <div id="egg" class="egg"></div>
+          <div id="racers" class="racers"></div>
+        </div>
+        <button id="begin-race-btn" type="button" class="begin-race-btn">Start Race</button>
+      </div>
+
+      <div id="countdown" class="countdown hidden"><span id="countdown-number">3</span></div>
+      <p class="hint">Last one to the egg doesn't get a happy ending.</p>
+    </div>
+  </section>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

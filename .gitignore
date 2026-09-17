@@ -1,0 +1,10 @@
+node_modules
+dist
+
+# Local Netlify folder
+.netlify
+
+# Playwright (baseline snapshots under tests/visual/*-snapshots/ ARE tracked)
+test-results
+playwright-report
+blob-report

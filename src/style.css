@@ -1,0 +1,478 @@
+:root {
+  --bg: #0f1720;
+  --bg-2: #16212c;
+  --card: #1c2a37;
+  --text: #f2f5f7;
+  --text-dim: #9fb0bd;
+  --green: #34d399;
+  --red: #ef4444;
+  --gold: #fbbf24;
+  --accent: #22c55e;
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(circle at 50% -10%, #1b2b3a, var(--bg) 60%);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+/* The race screen is a normal (non-fixed) page section now, so any sliver of
+   space below it - a momentary overscroll bounce, or the page being a touch
+   taller than the visible area on some phones - exposes body's own
+   background. Without this, that sliver is a visibly different color (bluer)
+   than the race screen's own background (a warmer maroon), which reads as a
+   stray box. Matching them exactly while the race screen is up makes any gap
+   invisible instead of trying to guarantee there's never a gap at all. */
+body.race-bg {
+  background: linear-gradient(180deg, #2a1420 0%, #3a1526 100%);
+}
+
+/* The race must fit in exactly one screen with no scrolling at all - `dvh`
+   sizing (below) makes that the common case, but scroll is the fallback for
+   any leftover mismatch, and a fallback the user can trigger is still a
+   fallback they don't want. This removes the possibility outright instead
+   of relying on sizing precision alone. Toggled only while the race screen
+   is showing (main.ts), since the setup/result screens can be taller than
+   one viewport by design (e.g. many racers) and are meant to scroll. */
+html.scroll-locked, body.scroll-locked {
+  overflow: hidden;
+}
+
+#app {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+#app.hidden { display: none; }
+
+.screen { width: 100%; max-width: 420px; }
+.screen.hidden { display: none; }
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+
+/* --- race screen: a normal full-width page section, NOT position:fixed ---
+   `dvh` (dynamic viewport height) is the browser's own primitive for
+   exactly this problem: unlike `vh`, it's defined to track the *actual*
+   visible area net of on-screen browser chrome (address bar, toolbar),
+   recalculated as that chrome shows/hides. iOS forces every browser -
+   Safari, Chrome, anything else - onto Apple's own WebKit as the actual
+   rendering engine (only the surrounding browser-chrome UI differs), so
+   `dvh` support and behavior come from WebKit itself and should be
+   consistent across browsers there, unlike a JS measurement such as
+   `window.innerHeight`, which reads differently depending on how each
+   browser's own chrome wrapper reports it. `height` (not `min-height`):
+   min-height is a separate floor that combines with height via max(), so
+   this must stay a plain `height` or a later reflow could silently pin
+   this back to full-viewport regardless of content. Also NOT
+   position:fixed - it's a full-width section (it lives outside #app in
+   index.html so #app's centered/padded/max-width layout doesn't constrain
+   it) - so even in an edge case where dvh is a frame stale, a normal block
+   means one child still can't overlap another. Scrolling itself is
+   separately hard-disabled while this screen is up (`scroll-locked` in
+   main.ts) so a rare sizing mismatch can never surface as a nudge-able
+   scrollbar. */
+#screen-race.screen {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #2a1420 0%, #3a1526 100%);
+}
+/* #screen-race.screen's `display: flex` outranks the plain `.screen.hidden`
+   rule below (ID + class beats class + class), so without this override the
+   race screen would stay visible on top of everything even while "hidden"
+   is applied - a real bug this exact override already caught once. */
+#screen-race.screen.hidden {
+  display: none;
+}
+
+#screen-race .wrap-wide {
+  display: contents;
+}
+
+h1 {
+  font-size: 2rem;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.app-title.small { font-size: 1.4rem; }
+
+.subtitle {
+  color: var(--text-dim);
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+/* --- buttons --- */
+.primary-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #05261a;
+  margin-top: 8px;
+  transition: transform 0.08s ease, opacity 0.15s ease;
+}
+.primary-btn:active { transform: scale(0.97); }
+.primary-btn:disabled { opacity: 0.4; }
+
+.secondary-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #2a3b4a;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.hint {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin: 4px 0 0;
+}
+
+.wrap-wide .hint {
+  padding: 10px 16px 14px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* --- setup: player count slider --- */
+.slider-block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.slider-value {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.slider-value span#player-count-display {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.slider-label {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.slider {
+  width: 100%;
+  margin-top: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--card);
+  outline: none;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid #05261a;
+  cursor: pointer;
+}
+.slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid #05261a;
+  cursor: pointer;
+}
+.slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--card);
+}
+
+/* --- race header --- */
+.race-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  flex-shrink: 0;
+}
+
+.mute-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card);
+  font-size: 1.1rem;
+}
+
+/* --- race track: fills all remaining space edge-to-edge, no card frame --- */
+.track-frame {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* Small explicit safety buffer above the hint text - flexbox already
+     guarantees no overlap in exact math, but this absorbs a few px of
+     slack from things flexbox can't account for (subpixel rounding, a
+     device's own font metrics rendering .hint a touch differently), so nothing
+     from the track can ever visually brush against the text below it. */
+  margin-bottom: 8px;
+}
+
+/* `inset: 0` against its positioned ancestor (.track-frame), not a
+   percentage height/width - this is the same class of bug as everywhere
+   else in this file: a percentage here would need .track-frame's height to
+   be "definite" per spec, which broke once an ancestor further up relied on
+   min-height instead of an explicit height, silently collapsing this to 0
+   and hiding the entire track. inset sidesteps that requirement entirely. */
+.track {
+  position: absolute;
+  inset: 0;
+}
+
+/* --- shown once the lineup is on the start line, before the countdown --- */
+.begin-race-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  padding: 18px 30px;
+  border-radius: 999px;
+  border: none;
+  font-size: 1.2rem;
+  font-weight: 800;
+  background: var(--accent);
+  color: #05261a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 0.08s ease;
+}
+.begin-race-btn:active { transform: translate(-50%, -50%) scale(0.96); }
+.begin-race-btn.hidden { display: none; }
+
+/* SVG is a "replaced element" in CSS terms (like <img>) - unlike a plain
+   div, `inset: 0` alone on a replaced element with no explicit width/height
+   can fall back to its intrinsic aspect ratio (here, a square, from the
+   1:1 viewBox) instead of stretching to fill the box, squashing the track
+   into a fraction of its real height. Explicit width/height forces the
+   stretch. This is safe from the min-height/percentage chain problem
+   elsewhere in this file because #track's own size is definite (`inset: 0`
+   against .track-frame, not a percentage against something indefinite). */
+.track-guides {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tube-border {
+  fill: none;
+  stroke: rgba(255, 214, 230, 0.55);
+  stroke-width: 76;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.tube-surface {
+  fill: none;
+  stroke: #d94f85;
+  stroke-width: 62;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.start-line {
+  position: absolute;
+  width: 46px;
+  height: 14px;
+  border-radius: 3px;
+  background-image: repeating-conic-gradient(#161219 0% 25%, #f4f0ea 0% 50%);
+  background-size: 7.5px 7.5px;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.35);
+  z-index: 1;
+}
+
+.egg {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  margin-left: -26px;
+  margin-top: -26px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,0.95), transparent 34%),
+    radial-gradient(circle at 68% 72%, rgba(255,214,150,0.45), transparent 55%),
+    radial-gradient(circle at 50% 50%, #fff6e6, #ffdf9e 62%, #f3bd5f 100%);
+  /* thin translucent ring = zona pellucida, so it reads as a cell, not a sun */
+  box-shadow:
+    0 0 0 4px rgba(255, 246, 224, 0.18),
+    0 0 22px 6px rgba(255, 223, 158, 0.7),
+    inset 0 0 10px rgba(200, 140, 40, 0.35);
+  animation: egg-pulse 1.6s ease-in-out infinite;
+  z-index: 2;
+}
+
+@keyframes egg-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.racers {
+  position: absolute;
+  inset: 0;
+}
+
+.sperm {
+  position: absolute;
+  width: 36px;
+  z-index: 3;
+  /* Anchor at the head-tip (not the body center) so progress=100 means the tip
+     of the head touches the egg, not the sprite's geometric middle. */
+  transform: translate(-50%, -18%);
+  transition: left 0.05s linear, top 0.05s linear;
+}
+
+.sperm-visual {
+  width: 100%;
+  transform-origin: 50% 18%;
+}
+
+.sperm.finished .sperm-svg { filter: drop-shadow(0 0 4px rgba(255,255,255,0.9)); }
+
+/* --- brief reaction on the loser, in the beat before cutting to results --- */
+.sperm.lost {
+  animation: lost-shake 0.5s ease;
+}
+@keyframes lost-shake {
+  0%, 100% { transform: translate(-50%, -18%) translateX(0); }
+  20% { transform: translate(-50%, -18%) translateX(-5px); }
+  40% { transform: translate(-50%, -18%) translateX(5px); }
+  60% { transform: translate(-50%, -18%) translateX(-4px); }
+  80% { transform: translate(-50%, -18%) translateX(3px); }
+}
+.sperm.lost .sperm-visual {
+  animation: lost-flash 0.5s ease;
+}
+@keyframes lost-flash {
+  0%, 100% { filter: none; }
+  30% { filter: brightness(1.4) saturate(2) drop-shadow(0 0 6px rgba(239, 68, 68, 0.8)); }
+}
+
+.sperm-svg { width: 100%; height: auto; overflow: visible; display: block; }
+
+.sperm-number {
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  transform: translate(-50%, -100%);
+  min-width: 17px;
+  padding: 0 3px;
+  border-radius: 50%;
+  background: rgba(20, 10, 15, 0.8);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.tail-wrap {
+  transform-box: view-box;
+  transform-origin: 12px 18px;
+  animation: tail-wiggle 0.32s ease-in-out infinite alternate;
+}
+@keyframes tail-wiggle {
+  0% { transform: rotate(-13deg); }
+  100% { transform: rotate(13deg); }
+}
+
+.countdown {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  background: rgba(10, 6, 12, 0.25);
+  pointer-events: none;
+  z-index: 5;
+}
+.countdown.hidden { display: none; }
+
+#countdown-number {
+  display: inline-block;
+  animation: countdown-pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes countdown-pop {
+  0% { transform: scale(1.7); opacity: 0; }
+  55% { transform: scale(0.92); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- result screen --- */
+.result-sperm {
+  width: 90px;
+  height: auto;
+  animation: pop-in 0.3s ease;
+}
+.result-sperm .sperm-svg { width: 100%; height: auto; overflow: visible; }
+.result-sperm .tail-wrap { animation: tail-wiggle 0.32s ease-in-out infinite alternate; }
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.8); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#result-title {
+  margin: 6px 0 0;
+  font-size: 1.8rem;
+  letter-spacing: -0.02em;
+}
+
+.result-name {
+  font-size: 1.2rem;
+  color: var(--text-dim);
+  margin: 0 0 12px;
+}
