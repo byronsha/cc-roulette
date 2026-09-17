@@ -102,13 +102,24 @@ const ACCESSORIES: AccessoryFn[] = [
   (c, d) => `<path d="M4,3 Q4,-6 12,-6 Q20,-6 20,3 Z" fill="${c}" stroke="${d}" stroke-width="1"/><line x1="12" y1="-6" x2="12" y2="-10" stroke="#666" stroke-width="1.4"/><polygon points="12,-11 17,-10 12,-9" fill="#fbbf24" stroke="#a16207" stroke-width="0.5"/><polygon points="12,-11 7,-10 12,-9" fill="#fbbf24" stroke="#a16207" stroke-width="0.5"/>`,
 ];
 
+// Anatomy pass: a real sperm head is an oval tapered to a point at the
+// acrosome (front tip), not a symmetric ellipse; a short, narrower midpiece
+// (mitochondrial sheath) connects it to the tail, which itself tapers -
+// thick near the body, whip-thin at the tip - rather than staying one
+// constant stroke-width. Palette/hats are untouched; only the body shape
+// changed. Head/midpiece keep roughly the old ellipse's x/y footprint
+// (x:4-20, y:~-3 to 18.5) so every existing hand-positioned accessory
+// still lands correctly with no per-accessory rework.
 function spermSvg(color: string, dark: string, accessoryIndex: number): string {
   const accessory = ACCESSORIES[accessoryIndex](color, dark);
-  return `<svg viewBox="-4 -12 32 64" class="sperm-svg" xmlns="http://www.w3.org/2000/svg">
+  return `<svg viewBox="-4 -12 32 74" class="sperm-svg" xmlns="http://www.w3.org/2000/svg">
     <g class="tail-wrap">
-      <path class="sperm-tail" d="M12,18 C18,25 6,31 12,37 C18,43 6,47 12,50" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
+      <path class="sperm-tail" d="M12,25 C17,28 7,32 12,35" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round"/>
+      <path class="sperm-tail" d="M12,35 C18,39 6,42 12,45" fill="none" stroke="${color}" stroke-width="1.7" stroke-linecap="round"/>
+      <path class="sperm-tail" d="M12,45 C19,50 5,53 12,56 Q14,58 12,59" fill="none" stroke="${color}" stroke-width="1" stroke-linecap="round"/>
     </g>
-    <ellipse class="sperm-head" cx="12" cy="9" rx="8" ry="9.5" fill="${color}" stroke="${dark}" stroke-width="1.5"/>
+    <rect class="sperm-midpiece" x="10.4" y="17" width="3.2" height="8" rx="1.6" fill="${dark}"/>
+    <path class="sperm-head" d="M12,-3 C14,0 19.5,1 20,5.5 C20.3,8.5 20,12 18,15 C16,17.5 14,18.5 12,18.5 C10,18.5 8,17.5 6,15 C4,12 3.7,8.5 4,5.5 C4.5,1 10,0 12,-3 Z" fill="${color}" stroke="${dark}" stroke-width="1.5" stroke-linejoin="round"/>
     <ellipse class="sperm-shine" cx="9" cy="5.5" rx="2.4" ry="3" fill="#ffffff" opacity="0.5"/>
     ${accessory}
   </svg>`;

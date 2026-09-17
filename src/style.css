@@ -493,14 +493,17 @@ h1 {
   width: 36px;
   z-index: 3;
   /* Anchor at the head-tip (not the body center) so progress=100 means the tip
-     of the head touches the egg, not the sprite's geometric middle. */
-  transform: translate(-50%, -18%);
+     of the head touches the egg, not the sprite's geometric middle. 14.9% =
+     (headTipY - viewBoxTop) / viewBoxHeight = (-3 - -12) / 74, from the
+     sperm-head path's own tip coordinate in spermSvg() (main.ts) - recompute
+     this if that path or the viewBox ever changes again. */
+  transform: translate(-50%, -14.9%);
   transition: left 0.05s linear, top 0.05s linear;
 }
 
 .sperm-visual {
   width: 100%;
-  transform-origin: 50% 18%;
+  transform-origin: 50% 14.9%;
 }
 
 .sperm.finished .sperm-svg { filter: drop-shadow(0 0 4px rgba(255,255,255,0.9)); }
@@ -523,11 +526,11 @@ h1 {
   animation: lost-shake 0.5s ease;
 }
 @keyframes lost-shake {
-  0%, 100% { transform: translate(-50%, -18%) translateX(0); }
-  20% { transform: translate(-50%, -18%) translateX(-5px); }
-  40% { transform: translate(-50%, -18%) translateX(5px); }
-  60% { transform: translate(-50%, -18%) translateX(-4px); }
-  80% { transform: translate(-50%, -18%) translateX(3px); }
+  0%, 100% { transform: translate(-50%, -14.9%) translateX(0); }
+  20% { transform: translate(-50%, -14.9%) translateX(-5px); }
+  40% { transform: translate(-50%, -14.9%) translateX(5px); }
+  60% { transform: translate(-50%, -14.9%) translateX(-4px); }
+  80% { transform: translate(-50%, -14.9%) translateX(3px); }
 }
 .sperm.lost .sperm-visual {
   animation: lost-flash 0.5s ease;
@@ -559,7 +562,7 @@ h1 {
 
 .tail-wrap {
   transform-box: view-box;
-  transform-origin: 12px 18px;
+  transform-origin: 12px 25px;
   animation: tail-wiggle 0.32s ease-in-out infinite alternate;
 }
 @keyframes tail-wiggle {
