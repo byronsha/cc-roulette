@@ -96,16 +96,12 @@ html.scroll-locked, body.scroll-locked {
    scrollbar. */
 #screen-race.screen {
   width: 100%;
-  /* Caps the track at a phone-like aspect ratio no matter how wide the
-     actual browser window is, the same way #app already caps the setup/
-     result screens (max-width:420px, see .screen above). The track's whole
-     curve (trackGeometry.ts) is built assuming a tall, narrow container - a
-     plain wide desktop window, not resized to phone-like proportions,
-     inverts that and visibly distorts the curve. Confirmed directly: at
-     2000x1140 without this cap, #track ends up wider than tall and the
-     hook's top renders as a flat edge instead of round. */
-  max-width: 480px;
-  margin: 0 auto;
+  /* Overrides the generic `.screen { max-width: 420px }` (for setup/
+     result) - this screen's own width cap lives on .track-col instead now,
+     so .race-header (a sibling of .track-col, not inside it) can span the
+     full window width. Without this, the generic rule's max-width would
+     silently cap #screen-race.screen itself right back down again. */
+  max-width: none;
   height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -124,8 +120,37 @@ html.scroll-locked, body.scroll-locked {
   display: none;
 }
 
-#screen-race .wrap-wide {
-  display: contents;
+/* Wraps track-frame/countdown/hint (NOT .race-header, which is a sibling
+   before this, outside the cap - see index.html) and caps them at a
+   phone-like aspect ratio no matter how wide the actual browser window is,
+   the same way #app already caps the setup/result screens
+   (max-width:420px, see .screen above). The track's whole curve
+   (trackGeometry.ts) is built assuming a tall, narrow container - a plain
+   wide desktop window, not resized to phone-like proportions, inverts that
+   and visibly distorts the curve. Confirmed directly: at 2000x1140 without
+   this cap, #track ends up wider than tall and the hook's top renders as a
+   flat edge instead of round. Was previously the cap on #screen-race.screen
+   itself, which also capped the header - moved here so the header can span
+   the full window width instead (a real box now, not `display:contents`
+   like this element used to be, since a cap needs a real box to apply to).
+   flex:1 fills the remaining height below the header, in the same
+   #screen-race.screen flex column. */
+.track-col {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* This element also carries the base .wrap class (for the "wrap" and
+     "wrap-wide" HTML selectors elsewhere), which sets gap:14px - harmless
+     back when .track-col (as .wrap-wide) was `display: contents` and so
+     never actually a flex container of its own, but a real, silent 14px
+     gap between .track-frame and .hint now that it is one. Overridden back
+     to 0 here; spacing between them is handled explicitly instead
+     (.track-frame's own margin-bottom). */
+  gap: 0;
 }
 
 h1 {
@@ -243,6 +268,9 @@ h1 {
 }
 
 /* --- race header --- */
+/* A sibling of .track-col, not inside it (see index.html) - so this spans
+   the full window width on a wide screen instead of being capped to the
+   same 480px the track is. */
 .race-header {
   width: 100%;
   display: flex;

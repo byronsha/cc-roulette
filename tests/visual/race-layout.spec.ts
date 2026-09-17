@@ -160,6 +160,28 @@ test.describe("race screen layout", () => {
     expect(/NaN|Infinity/.test(d)).toBe(false);
   });
 
+  test("the header spans the full window width on a wide desktop window", async ({ page }) => {
+    // .race-header is a sibling of .track-col (not inside it, see
+    // index.html) specifically so it isn't capped to the same 480px the
+    // track is - it should reach edge to edge of the actual window even
+    // though the track stays narrower.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto("/");
+    await page.click("#continue-btn");
+
+    const rects = await page.evaluate(() => {
+      const header = document.querySelector(".race-header")!.getBoundingClientRect();
+      const trackCol = document.querySelector(".track-col")!.getBoundingClientRect();
+      return {
+        headerWidth: header.width,
+        trackColWidth: trackCol.width,
+        windowInnerWidth: window.innerWidth,
+      };
+    });
+    expect(rects.headerWidth).toBeCloseTo(rects.windowInnerWidth, 0);
+    expect(rects.trackColWidth).toBeLessThan(rects.headerWidth);
+  });
+
   test("the whole tube shape stays inside the viewBox (no edge clipped off-screen)", async ({
     page,
   }) => {

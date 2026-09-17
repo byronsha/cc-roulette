@@ -69,12 +69,15 @@
        its height robust across every mobile browser's own toolbar/chrome
        behavior. See the comment on #screen-race.screen in style.css. -->
   <section id="screen-race" class="screen hidden">
-    <div class="wrap wrap-wide">
-      <div class="race-header">
-        <h1 class="app-title small">🏁 Sperm Race</h1>
-        <button id="mute-btn" type="button" class="mute-btn" aria-label="Mute music">🔊</button>
-      </div>
+    <!-- Full width, NOT inside .track-col below - so it spans the whole
+         window even where .track-col is capped narrower to keep the track
+         itself phone-shaped. See .race-header in style.css. -->
+    <div class="race-header">
+      <h1 class="app-title small">🏁 Sperm Race</h1>
+      <button id="mute-btn" type="button" class="mute-btn" aria-label="Mute music">🔊</button>
+    </div>
 
+    <div class="wrap wrap-wide track-col">
       <div class="track-frame">
         <div id="track" class="track">
           <svg id="track-guides" class="track-guides" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
