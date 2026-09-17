@@ -546,7 +546,13 @@ function buildCiliaTufts(): string {
         const fracW = Math.min(1, Math.max(0, (row + 0.5) / rows + jitterW));
         const t = t0 + fracT * (t1 - t0);
         const half = tubeWidthPx(t) / 2;
-        const lateralPx = (fracW * 2 - 1) * half * 0.6;
+        // Reaches much closer to the tube wall than the racers' own lane
+        // range (MAX_LANE_OFFSET_PX in trackGeometry.ts is a small fixed
+        // 14px, dwarfed by the tube's real half-width) - cilia are part of
+        // the tube's surface, not confined to where a racer can swim, so
+        // there's no reason to bunch them near the centerline just because
+        // that's as far out as a sperm ever gets.
+        const lateralPx = (fracW * 2 - 1) * half * 0.88;
         const center = tubeCenter(t);
         const off = perpendicularOffsetPercent(t, lateralPx, trackW, trackH);
         const p = { x: center.x + off.x, y: center.y + off.y };
