@@ -388,6 +388,26 @@ h1 {
   vector-effect: non-scaling-stroke;
 }
 
+/* Cilia hazard zones (see CILIA_ZONES/stepRace in main.ts/raceEngine.ts),
+   drawn as small dots scattered across the middle of the track (top-down
+   view of each cilium's tip) rather than hairs lining the walls. Icy blue-
+   white, distinct from the tube's own warm pink palette, so a cluster
+   reads as "different from the surface" at a glance. Pulses gently to draw
+   the eye toward an oncoming one before a racer reaches it. */
+.cilia-dots {
+  animation: cilia-dots-pulse 2.2s ease-in-out infinite;
+}
+@keyframes cilia-dots-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+.cilia-dot-halo {
+  fill: rgba(173, 230, 255, 0.45);
+}
+.cilia-dot-core {
+  fill: rgba(230, 250, 255, 0.9);
+}
+
 .start-line {
   position: absolute;
   width: 46px;
@@ -445,6 +465,19 @@ h1 {
 }
 
 .sperm.finished .sperm-svg { filter: drop-shadow(0 0 4px rgba(255,255,255,0.9)); }
+
+/* --- caught by cilia resistance (see stepRace's ciliaSlowUntil) --- */
+/* Toggled on/off every frame in tick() (main.ts) for as long as the effect
+   lasts (well under a second) - an icy ring pulsing around the racer, so a
+   sudden slowdown reads as "caught by something" rather than just an
+   unexplained stutter that's easy to miss with several racers on screen. */
+.sperm.slowed .sperm-visual {
+  animation: slowed-pulse 0.45s ease-in-out infinite;
+}
+@keyframes slowed-pulse {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(173, 230, 255, 0.6)); }
+  50% { filter: drop-shadow(0 0 7px rgba(173, 230, 255, 0.95)) brightness(1.08); }
+}
 
 /* --- brief reaction on the loser, in the beat before cutting to results --- */
 .sperm.lost {

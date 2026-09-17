@@ -14,7 +14,7 @@ import {
   EGG_X,
   EGG_Y,
 } from "./trackGeometry";
-import { stepRace, type EngineConstants } from "./raceEngine";
+import { stepRace, type EngineConstants, type CiliaZone } from "./raceEngine";
 
 type ScreenName = "setup" | "race" | "result";
 
@@ -166,6 +166,8 @@ interface Racer {
   nextTargetAt: number;
   finished: boolean;
   colorIndex: number;
+  ciliaHit: boolean[];
+  ciliaSlowUntil: number;
 }
 
 const BASE_SPEED = 5.8; // %/s average
@@ -180,11 +182,40 @@ const MAX_MULT = 2.2;
 // change if the feel should go the other way again.)
 const RUBBER_BAND_STRENGTH = -0.2;
 
+// Many small zones evenly spaced across most of the track (in the same
+// 0-100 `progress` scale the race engine already uses), instead of a
+// handful of wide clustered patches - real fallopian tube cilia line most
+// of the tube fairly continuously, not just a few isolated spots. Fixed,
+// not randomized per race - drawTrack() renders visible cilia dots at each
+// one (see buildCiliaDots), so players can see a hazard coming rather than
+// being blindsided by an invisible one. The RANDOMNESS is entirely in
+// whether a given racer is slowed when it passes through (see
+// ciliaTriggerChance) - the zones' positions are part of the track, not
+// the gamble.
+function buildEvenlySpacedCiliaZones(count: number, rangeStart: number, rangeEnd: number, zoneWidth: number): CiliaZone[] {
+  const spacing = (rangeEnd - rangeStart - zoneWidth) / (count - 1);
+  return Array.from({ length: count }, (_, i) => {
+    const start = rangeStart + i * spacing;
+    return { startProgress: start, endProgress: start + zoneWidth };
+  });
+}
+const CILIA_ZONES: CiliaZone[] = buildEvenlySpacedCiliaZones(12, 10, 88, 2);
+// Lower than a 4-zone version would use - with 3x the zones, the same
+// per-zone chance would slow racers roughly 3x as often overall. This keeps
+// the total expected number of slowdowns per racer in a similar range.
+const CILIA_TRIGGER_CHANCE = 0.18;
+const CILIA_SLOW_MULTIPLIER = 0.5;
+const CILIA_SLOW_DURATION_MS = 700;
+
 const ENGINE_CONSTANTS: EngineConstants = {
   baseSpeed: BASE_SPEED,
   minMult: MIN_MULT,
   maxMult: MAX_MULT,
   rubberBandStrength: RUBBER_BAND_STRENGTH,
+  ciliaZones: CILIA_ZONES,
+  ciliaTriggerChance: CILIA_TRIGGER_CHANCE,
+  ciliaSlowMultiplier: CILIA_SLOW_MULTIPLIER,
+  ciliaSlowDurationMs: CILIA_SLOW_DURATION_MS,
 };
 
 const trackEl = el<HTMLDivElement>("track");
@@ -292,6 +323,8 @@ function buildRace(n: number): void {
       nextTargetAt: 0,
       finished: false,
       colorIndex: styleIndex,
+      ciliaHit: new Array(CILIA_ZONES.length).fill(false),
+      ciliaSlowUntil: 0,
     };
   });
   finishedCount = 0;
@@ -408,11 +441,51 @@ function buildFimbriae(): string {
   return d;
 }
 
+// Deterministic pseudo-random in [0,1) - not Math.random, so the track's
+// own appearance (where each cilia dot lands) stays reproducible instead of
+// reshuffling on every draw.
+function pseudoRandom01(seed: number): number {
+  const x = Math.sin(seed) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// Cilia (see CILIA_ZONES/stepRace), drawn as small dots scattered across
+// the MIDDLE of the track - as if looking straight down the length of each
+// cilium from directly above (a true top-down/frontal view), rather than a
+// side profile of hairs lining the walls. Each dot is two circles (a soft
+// outer halo + a brighter core) for a little dimensionality, kept within
+// the inner ~70% of the tube's local width so none sit flush against a
+// wall.
+function buildCiliaDots(): string {
+  const dotsPerZone = 6;
+  let out = "";
+  for (const zone of CILIA_ZONES) {
+    const t0 = zone.startProgress / 100;
+    const t1 = zone.endProgress / 100;
+    for (let i = 0; i < dotsPerZone; i++) {
+      const seedBase = zone.startProgress * 91.7 + i * 12.9898;
+      const fracT = pseudoRandom01(seedBase);
+      const fracW = pseudoRandom01(seedBase * 1.618 + 4.21);
+      const fracR = pseudoRandom01(seedBase * 2.71 + 8.9);
+      const t = t0 + fracT * (t1 - t0);
+      const half = tubeWidthPx(t) / 2;
+      const lateralPx = (fracW * 2 - 1) * half * 0.7;
+      const center = tubeCenter(t);
+      const off = perpendicularOffsetPercent(t, lateralPx, trackW, trackH);
+      const p = { x: center.x + off.x, y: center.y + off.y };
+      const r = 0.9 + fracR * 0.7;
+      out += `<circle cx="${p.x}" cy="${p.y}" r="${r}" class="cilia-dot-halo"/><circle cx="${p.x}" cy="${p.y}" r="${r * 0.42}" class="cilia-dot-core"/>`;
+    }
+  }
+  return out;
+}
+
 function drawTrack(): void {
   const outlineD = buildTubePolygonD((t) => tubeWidthPx(t) + 14);
   const fillD = buildTubePolygonD(tubeWidthPx);
   const foldsD = buildFoldLines();
   const fimbriaeD = buildFimbriae();
+  const ciliaDotsD = buildCiliaDots();
 
   trackGuidesEl.innerHTML = `
     <defs>
@@ -430,6 +503,7 @@ function drawTrack(): void {
     <path d="${fillD}" class="tube-fill"/>
     <path d="${fimbriaeD}" class="fimbriae"/>
     <path d="${foldsD}" class="tube-folds"/>
+    <g class="cilia-dots">${ciliaDotsD}</g>
   `;
 
   const eggPoint = tubeCenter(1);
@@ -520,6 +594,8 @@ function startRace(): void {
     r.speed = BASE_SPEED;
     r.targetSpeed = BASE_SPEED;
     r.nextTargetAt = now;
+    r.ciliaHit.fill(false);
+    r.ciliaSlowUntil = 0;
   });
 
   lastTs = now;
@@ -534,6 +610,13 @@ function tick(ts: number): void {
   finishedCount = result.finishedCount;
   for (const i of result.finishedIndices) {
     racers[i].el.classList.add("finished");
+  }
+
+  // Visual feedback for the cilia slowdown itself (see stepRace) - without
+  // this a racer just quietly moving slower for under a second is easy to
+  // miss entirely, especially with several racers on screen at once.
+  for (const r of racers) {
+    r.el.classList.toggle("slowed", r.ciliaSlowUntil > ts);
   }
 
   positionRacers();
