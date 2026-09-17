@@ -214,7 +214,40 @@ function buildEvenlySpacedCiliaZones(count: number, rangeStart: number, rangeEnd
     return { startProgress: start, endProgress: start + zoneWidth };
   });
 }
-const CILIA_ZONES: CiliaZone[] = buildEvenlySpacedCiliaZones(12, 10, 88, 2);
+
+// How many cilia tufts buildCiliaTufts() draws for a zone at this index,
+// tapering toward zero at the very first/last few zones (crowding cilia
+// around the starting line or the egg reads as clutter around the two
+// things a player is actually looking at). The start side tapers one zone
+// longer than the end side - the starting racers are a bigger, busier
+// focal point than the egg.
+const CILIA_TUFT_GRID_SIZE = 4; // cols(2) * rows(2), see buildCiliaTufts
+function ciliaTuftCount(zoneIndex: number, zoneCount: number): number {
+  const startDist = zoneIndex;
+  const endDist = zoneCount - 1 - zoneIndex;
+  const startTufts = startDist <= 1 ? 0 : startDist === 2 ? 1 : startDist === 3 ? 2 : CILIA_TUFT_GRID_SIZE;
+  const endTufts = endDist === 0 ? 0 : endDist === 1 ? 1 : endDist === 2 ? 2 : CILIA_TUFT_GRID_SIZE;
+  return Math.min(startTufts, endTufts);
+}
+
+// A zone the taper above draws zero tufts for is a hazard with no visible
+// warning - exactly what the comment on buildEvenlySpacedCiliaZones above
+// promises never happens. Filtering those out here (rather than just
+// skipping them in buildCiliaTufts) keeps
+// CILIA_ZONES - the actual gameplay hit-zones stepRace checks against - in
+// sync with what's drawn, instead of the mechanic quietly reaching past
+// what the player can see coming.
+const CILIA_ZONE_RAW_COUNT = 12;
+const rawCiliaZones = buildEvenlySpacedCiliaZones(CILIA_ZONE_RAW_COUNT, 10, 88, 2);
+const CILIA_ZONE_TUFT_COUNTS: number[] = [];
+const CILIA_ZONES: CiliaZone[] = [];
+for (let i = 0; i < rawCiliaZones.length; i++) {
+  const tuftCount = ciliaTuftCount(i, CILIA_ZONE_RAW_COUNT);
+  if (tuftCount > 0) {
+    CILIA_ZONES.push(rawCiliaZones[i]);
+    CILIA_ZONE_TUFT_COUNTS.push(tuftCount);
+  }
+}
 // Lower than a 4-zone version would use - with 3x the zones, the same
 // per-zone chance would slow racers roughly 3x as often overall. This keeps
 // the total expected number of slowdowns per racer in a similar range.
@@ -600,20 +633,14 @@ function buildCiliaTufts(): string {
   const rows = 2;
   const hairsPerTuft = 3;
   const visualHalfWidthProgress = 3;
-  const zoneCount = CILIA_ZONES.length;
   let out = "";
-  for (let zoneIndex = 0; zoneIndex < zoneCount; zoneIndex++) {
+  for (let zoneIndex = 0; zoneIndex < CILIA_ZONES.length; zoneIndex++) {
     const zone = CILIA_ZONES[zoneIndex];
-    // Taper density toward the very first/last zones - cilia crowding the
-    // starting line or the egg itself reads as clutter around the two
-    // things a player is actually looking at, not part of the tube's
-    // texture. The start side tapers one zone longer than the end side
-    // (the starting racers are a bigger, busier focal point than the egg).
-    const startDist = zoneIndex;
-    const endDist = zoneCount - 1 - zoneIndex;
-    const startTufts = startDist <= 1 ? 0 : startDist === 2 ? 1 : startDist === 3 ? 2 : cols * rows;
-    const endTufts = endDist === 0 ? 0 : endDist === 1 ? 1 : endDist === 2 ? 2 : cols * rows;
-    const maxTufts = Math.min(startTufts, endTufts);
+    // Precomputed alongside CILIA_ZONES itself (see ciliaTuftCount) so a
+    // zone that would draw zero tufts was never added as a gameplay
+    // hit-zone in the first place, instead of being filtered out only
+    // here and left able to still slow/sfx a racer invisibly.
+    const maxTufts = CILIA_ZONE_TUFT_COUNTS[zoneIndex];
 
     const centerProgress = (zone.startProgress + zone.endProgress) / 2;
     const t0 = (centerProgress - visualHalfWidthProgress) / 100;
