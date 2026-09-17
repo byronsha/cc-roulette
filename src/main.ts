@@ -179,6 +179,10 @@ interface Racer {
   colorIndex: number;
   ciliaHit: boolean[];
   ciliaSlowUntil: number;
+  // Tracks the *previous* frame's slowed state so the cilia "boing" sfx
+  // fires once per hit (on the false->true edge), not every frame the
+  // racer happens to still be inside the slow window.
+  wasSlowed: boolean;
 }
 
 const BASE_SPEED = 5.8; // %/s average
@@ -318,6 +322,77 @@ muteBtn.addEventListener("click", () => {
   muteBtn.textContent = muted ? "🔇" : "🔊";
 });
 
+// ---------- Synthesized sfx (cilia hit, finish fanfare) ----------
+//
+// Generated at runtime via Web Audio instead of shipped as audio files -
+// there's no ready-made "boing"/"fanfare" clip lying around the project
+// the way beep/gunshot/buzzer were, and downloading one from the web would
+// mean shipping a license the project can't vouch for. A couple of
+// oscillator+gain sweeps get the same effect with no asset at all.
+let audioCtx: AudioContext | null = null;
+
+// Like primeSfx below, a Web Audio context also starts "suspended" until a
+// real user gesture resumes it - called from beginRaceBtn's click handler
+// for the same reason gunshotSfx/buzzerSfx get primed there.
+function unlockAudioCtx(): void {
+  // Guards an environment with no Web Audio support at all (the test
+  // suite's jsdom included) - playCiliaBoing/playFinishFanfare already
+  // no-op whenever audioCtx stays null, so this just keeps both sfx silent
+  // there instead of throwing and aborting the rest of this click handler.
+  if (typeof AudioContext === "undefined") return;
+  if (!audioCtx) {
+    audioCtx = new AudioContext();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {
+      /* ignore - falls back to staying silent, same as a blocked <audio> */
+    });
+  }
+}
+
+// Quick descending pitch sweep - a cartoon "boing" for getting caught by
+// cilia. Kept short and soft since a single race can trigger this many
+// times across several racers; a louder or longer sound would get grating.
+function playCiliaBoing(): void {
+  if (muted || !audioCtx) return;
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(650, now);
+  osc.frequency.exponentialRampToValueAtTime(180, now + 0.15);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.3, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.2);
+}
+
+// Short ascending four-note arpeggio - a "ta-da" for whoever finishes
+// first, since crossing the line in 1st was previously a total non-event
+// (only the loser got any reaction at all).
+function playFinishFanfare(): void {
+  if (muted || !audioCtx) return;
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+  notes.forEach((freq, i) => {
+    const start = now + i * 0.09;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.22, start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + 0.18);
+  });
+}
+
 function buildRace(n: number): void {
   raceLayout = shuffledIndices(10).slice(0, n);
 
@@ -345,6 +420,7 @@ function buildRace(n: number): void {
       colorIndex: styleIndex,
       ciliaHit: new Array(CILIA_ZONES.length).fill(false),
       ciliaSlowUntil: 0,
+      wasSlowed: false,
     };
   });
   finishedCount = 0;
@@ -704,6 +780,7 @@ function startRace(): void {
     r.nextTargetAt = now;
     r.ciliaHit.fill(false);
     r.ciliaSlowUntil = 0;
+    r.wasSlowed = false;
   });
 
   lastTs = now;
@@ -719,14 +796,28 @@ function tick(ts: number): void {
   finishedCount = result.finishedCount;
   for (const i of result.finishedIndices) {
     racers[i].el.classList.add("finished");
+    // Only the very first crossing gets the fanfare - checked before the
+    // push, so two racers finishing in the same frame (the tie-break case
+    // stepRace itself guards against for the LAST finisher) still can't
+    // both claim it.
+    if (finishOrder.length === 0) {
+      playFinishFanfare();
+    }
     finishOrder.push(i);
   }
 
-  // Visual feedback for the cilia slowdown itself (see stepRace) - without
-  // this a racer just quietly moving slower for under a second is easy to
-  // miss entirely, especially with several racers on screen at once.
+  // Visual + audio feedback for the cilia slowdown itself (see stepRace) -
+  // without this a racer just quietly moving slower for under a second is
+  // easy to miss entirely, especially with several racers on screen at
+  // once. The sfx fires only on the false->true edge (see Racer.wasSlowed)
+  // so it plays once per hit, not once per frame for as long as it lasts.
   for (const r of racers) {
-    r.el.classList.toggle("slowed", r.ciliaSlowUntil > ts);
+    const isSlowed = r.ciliaSlowUntil > ts;
+    if (isSlowed && !r.wasSlowed) {
+      playCiliaBoing();
+    }
+    r.wasSlowed = isSlowed;
+    r.el.classList.toggle("slowed", isSlowed);
   }
 
   positionRacers();
@@ -773,6 +864,7 @@ beginRaceBtn.addEventListener("click", () => {
   // (see primeSfx's comment).
   primeSfx(gunshotSfx);
   primeSfx(buzzerSfx);
+  unlockAudioCtx();
   beginRaceBtn.classList.add("hidden");
   runCountdownThenStart();
 });
