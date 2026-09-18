@@ -124,15 +124,23 @@ function spermSvg(color: string, dark: string, accessoryIndex: number, blinkOffs
     <rect class="sperm-midpiece" x="10.4" y="17" width="3.2" height="8" rx="1.6" fill="${dark}"/>
     <path class="sperm-head" d="M12,-3 C14,0 19.5,1 20,5.5 C20.3,8.5 20,12 18,15 C16,17.5 14,18.5 12,18.5 C10,18.5 8,17.5 6,15 C4,12 3.7,8.5 4,5.5 C4.5,1 10,0 12,-3 Z" fill="${color}" stroke="${dark}" stroke-width="1.5" stroke-linejoin="round"/>
     <ellipse class="sperm-shine" cx="9" cy="5.5" rx="2.4" ry="3" fill="#ffffff" opacity="0.5"/>
-    <ellipse class="sperm-blush" cx="6.5" cy="11.6" rx="1.7" ry="1.2"/>
-    <ellipse class="sperm-blush" cx="17.5" cy="11.6" rx="1.7" ry="1.2"/>
+    <ellipse class="sperm-blush" cx="6.3" cy="11.3" rx="1.9" ry="1.3"/>
+    <ellipse class="sperm-blush" cx="17.7" cy="11.3" rx="1.9" ry="1.3"/>
+    <!-- Big, tall (not round) eyes with a two-tier sparkle (a large glint
+         plus a small secondary one, same corner on both eyes - one shared
+         "light source" rather than mirrored) is what actually reads as
+         "kawaii" instead of a generic dot-eyed smiley. -->
     <g class="sperm-eyes" style="animation-delay:${blinkOffset}s">
-      <circle class="sperm-eye" cx="8.6" cy="9.3" r="1.55"/>
-      <circle class="sperm-eye" cx="15.4" cy="9.3" r="1.55"/>
-      <circle class="sperm-eye-sparkle" cx="8.1" cy="8.75" r="0.5"/>
-      <circle class="sperm-eye-sparkle" cx="14.9" cy="8.75" r="0.5"/>
+      <ellipse class="sperm-eye" cx="8.5" cy="9.2" rx="1.75" ry="2.15"/>
+      <ellipse class="sperm-eye" cx="15.5" cy="9.2" rx="1.75" ry="2.15"/>
+      <circle class="sperm-eye-sparkle-big" cx="7.75" cy="8.15" r="0.62"/>
+      <circle class="sperm-eye-sparkle-big" cx="14.75" cy="8.15" r="0.62"/>
+      <circle class="sperm-eye-sparkle-small" cx="9.15" cy="10.05" r="0.32"/>
+      <circle class="sperm-eye-sparkle-small" cx="16.15" cy="10.05" r="0.32"/>
     </g>
-    <path class="sperm-mouth" d="M9.3,13.8 Q12,15.6 14.7,13.8" fill="none"/>
+    <!-- A small double-bump "w" mouth (the closed, content cat/bear-mascot
+         smile) instead of one plain downward curve. -->
+    <path class="sperm-mouth" d="M8.9,13.9 Q10.45,15.3 12,13.9 Q13.55,15.3 15.1,13.9" fill="none"/>
     ${accessory}
   </svg>`;
 }

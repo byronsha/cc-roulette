@@ -593,7 +593,7 @@ h1 {
    white/grey racer's "dark" is a light grey a black eye would vanish
    against) to double as a face color. --- */
 .sperm-blush {
-  fill: rgba(255, 120, 150, 0.35);
+  fill: rgba(255, 120, 150, 0.4);
 }
 .sperm-eyes {
   transform-box: fill-box;
@@ -603,8 +603,12 @@ h1 {
 .sperm-eye {
   fill: #241a26;
 }
-.sperm-eye-sparkle {
+.sperm-eye-sparkle-big,
+.sperm-eye-sparkle-small {
   fill: #ffffff;
+}
+.sperm-eye-sparkle-small {
+  opacity: 0.85;
 }
 @keyframes sperm-blink {
   0%, 90%, 100% { transform: scaleY(1); }
@@ -613,8 +617,9 @@ h1 {
 }
 .sperm-mouth {
   stroke: #241a26;
-  stroke-width: 0.9;
+  stroke-width: 1;
   stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .sperm-number {
