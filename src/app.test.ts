@@ -18,6 +18,7 @@ function loadRealMarkup(): void {
 
 describe("countdown: music starts no later than the gunshot on GO!", () => {
   let playedSrcs: string[];
+  let pausedSrcs: string[];
 
   beforeEach(() => {
     vi.resetModules();
@@ -25,13 +26,18 @@ describe("countdown: music starts no later than the gunshot on GO!", () => {
     loadRealMarkup();
 
     playedSrcs = [];
+    pausedSrcs = [];
     vi.spyOn(window.HTMLMediaElement.prototype, "play").mockImplementation(function (
       this: HTMLMediaElement
     ) {
       playedSrcs.push(this.src);
       return Promise.resolve();
     });
-    vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    vi.spyOn(window.HTMLMediaElement.prototype, "pause").mockImplementation(function (
+      this: HTMLMediaElement
+    ) {
+      pausedSrcs.push(this.src);
+    });
   });
 
   afterEach(() => {
@@ -71,5 +77,26 @@ describe("countdown: music starts no later than the gunshot on GO!", () => {
 
     expect(musicIndex).toBeGreaterThanOrEqual(0);
     expect(musicIndex).toBeLessThanOrEqual(realGunshotIndex);
+  });
+
+  // The test above deliberately stops one tick before "GO!" actually hands
+  // off to startRace()'s requestAnimationFrame loop - so it can't catch a
+  // bug that only shows up once the race is really running (e.g. something
+  // in tick() throwing and killing the frame before it reaches the next
+  // frame, or anything that calls music.pause() when it shouldn't). This
+  // one runs all the way through the countdown and lets several real
+  // animation frames execute, then checks music was never paused.
+  it("never pauses the music once the race is actually running", async () => {
+    await import("./main");
+
+    document.getElementById("continue-btn")!.dispatchEvent(new Event("click", { bubbles: true }));
+    document.getElementById("begin-race-btn")!.dispatchEvent(new Event("click", { bubbles: true }));
+
+    // Past all 4 countdown steps (3,2,1,GO!, at 650ms each) so startRace()
+    // has fired, plus enough real time for several requestAnimationFrame
+    // ticks of the race loop itself to run.
+    await vi.advanceTimersByTimeAsync(650 * 4 + 2000);
+
+    expect(pausedSrcs.some((src) => src.includes("race-music"))).toBe(false);
   });
 });
