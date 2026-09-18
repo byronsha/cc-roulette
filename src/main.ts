@@ -281,6 +281,7 @@ const ENGINE_CONSTANTS: EngineConstants = {
 const trackEl = el<HTMLDivElement>("track");
 const racersEl = el<HTMLDivElement>("racers");
 const legendEl = el<HTMLDivElement>("legend");
+const captionEl = el<HTMLDivElement>("caption");
 const trackGuidesEl = el<SVGSVGElement>("track-guides");
 const eggEl = el<HTMLDivElement>("egg");
 const startLineEl = el<HTMLDivElement>("start-line");
@@ -290,6 +291,7 @@ const countdownNumberEl = el<HTMLSpanElement>("countdown-number");
 const muteBtn = el<HTMLButtonElement>("mute-btn");
 const resultSpermEl = el<HTMLDivElement>("result-sperm");
 const resultNumberEl = el("result-number");
+const resultNameEl = el("result-name");
 const againBtn = el<HTMLButtonElement>("again-btn");
 const changePlayersBtn = el<HTMLButtonElement>("change-players-btn");
 
@@ -306,6 +308,47 @@ let lastLegendUpdateTs = 0;
 // throttling to a few times a second still reads as "live" while keeping
 // the standings actually legible.
 const LEGEND_UPDATE_INTERVAL_MS = 150;
+
+// ---------- Announcer captions ----------
+let lastCaptionTs = 0;
+let captionHideTimeout = 0;
+let lastLeaderIndex = -1;
+let closeRaceCaptionFired = false;
+let stragglerCaptionFired = false;
+let photoFinishActive = false;
+const CAPTION_COOLDOWN_MS = 2200; // one caption's own minimum spacing from the next
+const CAPTION_VISIBLE_MS = 1800;
+
+function pickCaption(pool: string[], racerNumber?: number): string {
+  const text = pool[Math.floor(Math.random() * pool.length)];
+  return racerNumber === undefined ? text : text.replace("{n}", String(racerNumber));
+}
+
+// A shared cooldown (not per-category) keeps captions from stacking up
+// when several trigger conditions are true the same frame - whichever
+// fires first this window wins, the rest just silently skip. Good enough
+// for flavor text; not worth a priority queue.
+function showCaption(ts: number, text: string): void {
+  if (ts - lastCaptionTs < CAPTION_COOLDOWN_MS) return;
+  lastCaptionTs = ts;
+  captionEl.textContent = text;
+  captionEl.classList.add("visible");
+  window.clearTimeout(captionHideTimeout);
+  captionHideTimeout = window.setTimeout(() => captionEl.classList.remove("visible"), CAPTION_VISIBLE_MS);
+}
+
+const CILIA_CAPTIONS = [
+  "Racer {n} got wrecked by cilia!",
+  "Ouch! Racer {n} just got slapped by a cilium.",
+  "Racer {n} hit a wall of cilia!",
+];
+const LEAD_CHANGE_CAPTIONS = ["Racer {n} takes the lead!", "Racer {n} surges ahead!", "New leader: Racer {n}!"];
+const CLOSE_RACE_CAPTIONS = ["It's neck and neck!", "Too close to call!", "This is anyone's race!"];
+const STRAGGLER_CAPTIONS = [
+  "Racer {n} has given up (probably).",
+  "Racer {n} is really not feeling this.",
+  "Racer {n} might just be here for the vibes.",
+];
 
 const music = new Audio(raceMusicUrl);
 music.loop = true;
@@ -445,7 +488,13 @@ function buildRace(n: number): void {
     .map((styleIndex, i) => {
       const { color, dark } = PALETTE[styleIndex];
       const blinkOffset = (i * 0.83) % 3.6;
-      return `<div class="sperm" id="sperm-${i}">
+      // Staggered so the whole lineup doesn't fidget in lockstep - same
+      // trick as blinkOffset above, different cadence/values. A custom
+      // property (not animation-delay directly) so this leftover style
+      // attribute can't also delay .lost's own animation later - only
+      // .idle's keyframe rule reads --idle-delay.
+      const idleOffset = (i * 0.41) % 1.8;
+      return `<div class="sperm idle" id="sperm-${i}" style="--idle-delay:${idleOffset}s">
         <div class="sperm-visual">${spermSvg(color, dark, styleIndex, blinkOffset)}</div>
         <span class="sperm-number">${i + 1}</span>
       </div>`;
@@ -821,16 +870,48 @@ function startRace(): void {
     r.ciliaHit.fill(false);
     r.ciliaSlowUntil = 0;
     r.wasSlowed = false;
+    // Fidgeting at the start line stops the instant real motion begins -
+    // kept through the "3, 2, 1" countdown itself (nervous energy fits
+    // right up to the gun), just not once they're actually swimming.
+    r.el.classList.remove("idle");
   });
 
   lastTs = now;
   lastLegendUpdateTs = 0;
+  lastCaptionTs = 0;
+  lastLeaderIndex = -1;
+  closeRaceCaptionFired = false;
+  stragglerCaptionFired = false;
+  photoFinishActive = false;
+  captionEl.classList.remove("visible");
   rafId = requestAnimationFrame(tick);
 }
 
 function tick(ts: number): void {
-  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  let dt = Math.min(0.05, (ts - lastTs) / 1000);
   lastTs = ts;
+
+  // Photo finish: once exactly two racers are left (everyone else has
+  // already finished) and they're neck-and-neck near the end, latch into
+  // slow motion for the rest of the race - a uniform dt scale applies
+  // equally to every racer stepRace advances this frame, so it stretches
+  // time without touching who actually wins. Latched (not re-checked
+  // every frame) so a brief widening of the gap mid-slow-mo can't snap
+  // speed back to normal and then re-trigger a frame later.
+  if (!photoFinishActive && finishedCount === racers.length - 2) {
+    const unfinished = racers.filter((r) => !r.finished);
+    if (unfinished.length === 2) {
+      const gap = Math.abs(unfinished[0].progress - unfinished[1].progress);
+      const leadProgress = Math.max(unfinished[0].progress, unfinished[1].progress);
+      if (gap < 3 && leadProgress > 75) {
+        photoFinishActive = true;
+        showCaption(ts, "Photo finish!");
+      }
+    }
+  }
+  if (photoFinishActive) {
+    dt *= 0.35;
+  }
 
   const result = stepRace(racers, finishedCount, ts, dt, ENGINE_CONSTANTS);
   finishedCount = result.finishedCount;
@@ -855,9 +936,37 @@ function tick(ts: number): void {
     const isSlowed = r.ciliaSlowUntil > ts;
     if (isSlowed && !r.wasSlowed) {
       playCiliaBoing();
+      showCaption(ts, pickCaption(CILIA_CAPTIONS, r.index + 1));
     }
     r.wasSlowed = isSlowed;
     r.el.classList.toggle("slowed", isSlowed);
+  }
+
+  // Lead changes only matter while the race for 1st is still open - once
+  // someone's actually finished, first place is locked in for good (see
+  // finishOrder), so there's nothing left to announce here.
+  if (finishOrder.length === 0) {
+    let leader = racers[0];
+    let last = racers[0];
+    for (const r of racers) {
+      if (r.progress > leader.progress) leader = r;
+      if (r.progress < last.progress) last = r;
+    }
+    // progress > 5 skips the noisy first moment off the start line, where
+    // "the leader" flips constantly and doesn't mean anything yet.
+    if (lastLeaderIndex !== -1 && leader.index !== lastLeaderIndex && leader.progress > 5) {
+      showCaption(ts, pickCaption(LEAD_CHANGE_CAPTIONS, leader.index + 1));
+    }
+    lastLeaderIndex = leader.index;
+
+    if (!closeRaceCaptionFired && leader.progress > 70 && leader.progress - last.progress < 2.5) {
+      closeRaceCaptionFired = true;
+      showCaption(ts, pickCaption(CLOSE_RACE_CAPTIONS));
+    }
+    if (!stragglerCaptionFired && leader.progress > 60 && leader.progress - last.progress > 40) {
+      stragglerCaptionFired = true;
+      showCaption(ts, pickCaption(STRAGGLER_CAPTIONS, last.index + 1));
+    }
   }
 
   positionRacers();
@@ -890,10 +999,35 @@ function endRace(): void {
   setTimeout(() => showResult(loser), 600);
 }
 
+// A fixed line got stale fast, and this is the punchline of the whole
+// app - one at random every time keeps the loss screen worth reading.
+const EPITAPHS: string[] = [
+  "Swam its heart out. Died alone. 🪦",
+  "Gave it everything. Everything wasn't enough.",
+  "So close. Yet so incredibly not close.",
+  "The others don't even remember your name.",
+  "A valiant effort, wasted entirely.",
+  "Peaked at the starting line.",
+  "Had a whole personality. Wasted it.",
+  "Last place. Every time. Somehow.",
+  "The egg was never yours to have.",
+  "Thoughts and prayers. Mostly prayers.",
+  "This is why we can't have nice things.",
+  "Bravery is not the same as speed.",
+  "It tried. That's the nicest thing we can say.",
+  "Statistically, someone had to. It was you.",
+  "The tube remembers. The tube does not care.",
+  "Not even a participation trophy for this.",
+  "Somewhere, a wallet weeps. 💸",
+  "You had one job.",
+  "Better luck never.",
+];
+
 function showResult(loser: Racer): void {
   const { color, dark } = PALETTE[loser.colorIndex];
   resultSpermEl.innerHTML = spermSvg(color, dark, loser.colorIndex);
   resultNumberEl.textContent = String(loser.index + 1);
+  resultNameEl.textContent = EPITAPHS[Math.floor(Math.random() * EPITAPHS.length)];
   showScreen("result");
 }
 

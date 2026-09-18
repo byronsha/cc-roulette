@@ -360,6 +360,35 @@ h1 {
   text-align: center;
 }
 
+/* --- announcer captions (see showCaption in main.ts) - reuses the exact
+   center spot .begin-race-btn sits at, since that button is already
+   hidden by the time any caption could fire (captions only start once
+   real race motion begins in tick(), well after the button's own
+   click handler hides it). --- */
+.caption {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 4;
+  max-width: 82%;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(20, 10, 15, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.85);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.caption.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
 /* --- shown once the lineup is on the start line, before the countdown --- */
 .begin-race-btn {
   position: absolute;
@@ -499,6 +528,21 @@ h1 {
      this if that path or the viewBox ever changes again. */
   transform: translate(-50%, -14.9%);
   transition: left 0.05s linear, top 0.05s linear;
+}
+
+/* --- pre-race fidgeting at the start line (see .idle in main.ts) - sells
+   "these are characters waiting to go" instead of a static lineup. Reuses
+   the base positioning transform (same pattern as .lost's lost-shake
+   below) so the wiggle layers on top of it instead of replacing it. ---- */
+.sperm.idle {
+  animation: sperm-idle-fidget 1.8s ease-in-out infinite;
+  animation-delay: var(--idle-delay, 0s);
+}
+@keyframes sperm-idle-fidget {
+  0%, 100% { transform: translate(-50%, -14.9%) translateX(0) rotate(0deg); }
+  30% { transform: translate(-50%, -14.9%) translateX(-1px) rotate(-2deg); }
+  60% { transform: translate(-50%, -14.9%) translateX(1.5px) rotate(2deg); }
+  80% { transform: translate(-50%, -14.9%) translateX(-0.5px) rotate(-1deg); }
 }
 
 .sperm-visual {
