@@ -542,6 +542,37 @@ h1 {
 
 .sperm-svg { width: 100%; height: auto; overflow: visible; display: block; }
 
+/* --- face: the single biggest lever for "cute" in a cartoon design.
+   Fixed dark/white/pink tones regardless of racer color (same reasoning
+   as the accessories' own hard-coded colors, e.g. sunglasses' #111) -
+   the racer's own dark palette shade varies too much in contrast (the
+   white/grey racer's "dark" is a light grey a black eye would vanish
+   against) to double as a face color. --- */
+.sperm-blush {
+  fill: rgba(255, 120, 150, 0.35);
+}
+.sperm-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sperm-blink 4s ease-in-out infinite;
+}
+.sperm-eye {
+  fill: #241a26;
+}
+.sperm-eye-sparkle {
+  fill: #ffffff;
+}
+@keyframes sperm-blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  93% { transform: scaleY(0.1); }
+  96% { transform: scaleY(1); }
+}
+.sperm-mouth {
+  stroke: #241a26;
+  stroke-width: 0.9;
+  stroke-linecap: round;
+}
+
 .sperm-number {
   position: absolute;
   left: 50%;

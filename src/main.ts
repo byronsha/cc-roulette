@@ -110,7 +110,10 @@ const ACCESSORIES: AccessoryFn[] = [
 // changed. Head/midpiece keep roughly the old ellipse's x/y footprint
 // (x:4-20, y:~-3 to 18.5) so every existing hand-positioned accessory
 // still lands correctly with no per-accessory rework.
-function spermSvg(color: string, dark: string, accessoryIndex: number): string {
+// blinkOffset staggers each racer's blink cycle (see .sperm-eyes' animation)
+// so a whole lineup doesn't blink in unison - purely cosmetic, defaults to
+// 0 for the one-off result-screen sperm where it doesn't matter.
+function spermSvg(color: string, dark: string, accessoryIndex: number, blinkOffset = 0): string {
   const accessory = ACCESSORIES[accessoryIndex](color, dark);
   return `<svg viewBox="-4 -12 32 74" class="sperm-svg" xmlns="http://www.w3.org/2000/svg">
     <g class="tail-wrap">
@@ -121,6 +124,15 @@ function spermSvg(color: string, dark: string, accessoryIndex: number): string {
     <rect class="sperm-midpiece" x="10.4" y="17" width="3.2" height="8" rx="1.6" fill="${dark}"/>
     <path class="sperm-head" d="M12,-3 C14,0 19.5,1 20,5.5 C20.3,8.5 20,12 18,15 C16,17.5 14,18.5 12,18.5 C10,18.5 8,17.5 6,15 C4,12 3.7,8.5 4,5.5 C4.5,1 10,0 12,-3 Z" fill="${color}" stroke="${dark}" stroke-width="1.5" stroke-linejoin="round"/>
     <ellipse class="sperm-shine" cx="9" cy="5.5" rx="2.4" ry="3" fill="#ffffff" opacity="0.5"/>
+    <ellipse class="sperm-blush" cx="6.5" cy="11.6" rx="1.7" ry="1.2"/>
+    <ellipse class="sperm-blush" cx="17.5" cy="11.6" rx="1.7" ry="1.2"/>
+    <g class="sperm-eyes" style="animation-delay:${blinkOffset}s">
+      <circle class="sperm-eye" cx="8.6" cy="9.3" r="1.55"/>
+      <circle class="sperm-eye" cx="15.4" cy="9.3" r="1.55"/>
+      <circle class="sperm-eye-sparkle" cx="8.1" cy="8.75" r="0.5"/>
+      <circle class="sperm-eye-sparkle" cx="14.9" cy="8.75" r="0.5"/>
+    </g>
+    <path class="sperm-mouth" d="M9.3,13.8 Q12,15.6 14.7,13.8" fill="none"/>
     ${accessory}
   </svg>`;
 }
@@ -432,8 +444,9 @@ function buildRace(n: number): void {
   racersEl.innerHTML = raceLayout
     .map((styleIndex, i) => {
       const { color, dark } = PALETTE[styleIndex];
+      const blinkOffset = (i * 0.83) % 3.6;
       return `<div class="sperm" id="sperm-${i}">
-        <div class="sperm-visual">${spermSvg(color, dark, styleIndex)}</div>
+        <div class="sperm-visual">${spermSvg(color, dark, styleIndex, blinkOffset)}</div>
         <span class="sperm-number">${i + 1}</span>
       </div>`;
     })
