@@ -360,33 +360,33 @@ h1 {
   text-align: center;
 }
 
-/* --- announcer captions (see showCaption in main.ts) - reuses the exact
-   center spot .begin-race-btn sits at, since that button is already
-   hidden by the time any caption could fire (captions only start once
-   real race motion begins in tick(), well after the button's own
-   click handler hides it). --- */
+/* --- announcer captions (see showCaption in main.ts) - top-right corner,
+   the same "empty background, clear of the tube at every viewport size"
+   spot .legend used before it moved to top-left (see .legend above), so
+   the two now sit symmetrically without ever covering the track itself. */
 .caption {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  top: 6px;
+  right: 6px;
   z-index: 4;
-  max-width: 82%;
-  padding: 8px 18px;
+  max-width: calc(100% - 12px);
+  padding: 6px 12px;
   border-radius: 999px;
   background: rgba(20, 10, 15, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.25);
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 0.66rem;
   font-weight: 700;
   text-align: center;
+  white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.85);
+  transform: translateX(10px) scale(0.9);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .caption.visible {
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  transform: translateX(0) scale(1);
 }
 
 /* --- shown once the lineup is on the start line, before the countdown --- */
