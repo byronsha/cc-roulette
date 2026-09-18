@@ -131,16 +131,13 @@ function spermSvg(color: string, dark: string, accessoryIndex: number, blinkOffs
          "light source" rather than mirrored) is what actually reads as
          "kawaii" instead of a generic dot-eyed smiley. -->
     <g class="sperm-eyes" style="animation-delay:${blinkOffset}s">
-      <ellipse class="sperm-eye" cx="8.5" cy="9.2" rx="1.75" ry="2.15"/>
-      <ellipse class="sperm-eye" cx="15.5" cy="9.2" rx="1.75" ry="2.15"/>
-      <circle class="sperm-eye-sparkle-big" cx="7.75" cy="8.15" r="0.62"/>
-      <circle class="sperm-eye-sparkle-big" cx="14.75" cy="8.15" r="0.62"/>
-      <circle class="sperm-eye-sparkle-small" cx="9.15" cy="10.05" r="0.32"/>
-      <circle class="sperm-eye-sparkle-small" cx="16.15" cy="10.05" r="0.32"/>
+      <ellipse class="sperm-eye" cx="8.5" cy="7.8" rx="1.75" ry="2.15"/>
+      <ellipse class="sperm-eye" cx="15.5" cy="7.8" rx="1.75" ry="2.15"/>
+      <circle class="sperm-eye-sparkle-big" cx="7.75" cy="6.75" r="0.62"/>
+      <circle class="sperm-eye-sparkle-big" cx="14.75" cy="6.75" r="0.62"/>
+      <circle class="sperm-eye-sparkle-small" cx="9.15" cy="8.65" r="0.32"/>
+      <circle class="sperm-eye-sparkle-small" cx="16.15" cy="8.65" r="0.32"/>
     </g>
-    <!-- A small double-bump "w" mouth (the closed, content cat/bear-mascot
-         smile) instead of one plain downward curve. -->
-    <path class="sperm-mouth" d="M8.9,13.9 Q10.45,15.3 12,13.9 Q13.55,15.3 15.1,13.9" fill="none"/>
     ${accessory}
   </svg>`;
 }

@@ -615,12 +615,6 @@ h1 {
   93% { transform: scaleY(0.1); }
   96% { transform: scaleY(1); }
 }
-.sperm-mouth {
-  stroke: #241a26;
-  stroke-width: 1;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 
 .sperm-number {
   position: absolute;
