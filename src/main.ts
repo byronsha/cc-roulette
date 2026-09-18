@@ -1043,9 +1043,15 @@ beginRaceBtn.addEventListener("click", () => {
   // (see primeSfx's comment).
   primeSfx(gunshotSfx);
   primeSfx(buzzerSfx);
-  unlockAudioCtx();
   beginRaceBtn.classList.add("hidden");
   runCountdownThenStart();
+  // Deliberately LAST: creating a new AudioContext is a known trigger for
+  // iOS Safari to reset the page's whole audio session, which can silently
+  // cut off <audio> elements that were already mid-start-up in the same
+  // gesture - exactly beepSfx/music above. unlockAudioCtx isn't actually
+  // needed until the race's first cilia hit or 1st-place finish, seconds
+  // away, so there's no reason for it to risk going first.
+  unlockAudioCtx();
 });
 
 againBtn.addEventListener("click", prepareRace);
